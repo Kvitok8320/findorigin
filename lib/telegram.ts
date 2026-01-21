@@ -31,7 +31,9 @@ export async function sendMessage(chatId: number, text: string, options?: {
     console.log('[TELEGRAM] Sending message to:', url);
     console.log('[TELEGRAM] Chat ID:', chatId);
     console.log('[TELEGRAM] Text length:', text.length);
+    console.log('[TELEGRAM] Starting fetch request...');
     
+    const fetchStartTime = Date.now();
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -46,8 +48,11 @@ export async function sendMessage(chatId: number, text: string, options?: {
       // Явно указываем, что это внешний запрос
       cache: 'no-store',
     });
-
+    
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log('[TELEGRAM] Fetch completed in', fetchDuration, 'ms');
     console.log('[TELEGRAM] Response status:', response.status);
+    console.log('[TELEGRAM] Response ok:', response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -61,19 +66,23 @@ export async function sendMessage(chatId: number, text: string, options?: {
       throw new Error(`Telegram API error: ${JSON.stringify(error)}`);
     }
 
+    console.log('[TELEGRAM] Parsing response JSON...');
     const result = await response.json();
     console.log('[TELEGRAM] Message sent successfully');
+    console.log('[TELEGRAM] Response result:', JSON.stringify(result).substring(0, 100));
     return result;
   } catch (error: any) {
     // Логируем детали ошибки для диагностики
-    console.error('[TELEGRAM] Send message error:', {
-      url,
-      chatId,
-      error: error.message,
-      errorName: error.name,
-      errorCode: error.code,
-      stack: error.stack,
-    });
+    console.error('[TELEGRAM] Send message error occurred!');
+    console.error('[TELEGRAM] Error type:', typeof error);
+    console.error('[TELEGRAM] Error name:', error?.name || 'Unknown');
+    console.error('[TELEGRAM] Error message:', error?.message || String(error));
+    console.error('[TELEGRAM] Error code:', error?.code || 'No code');
+    console.error('[TELEGRAM] Error cause:', error?.cause || 'No cause');
+    console.error('[TELEGRAM] Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error)).substring(0, 500));
+    if (error?.stack) {
+      console.error('[TELEGRAM] Error stack:', error.stack.substring(0, 1000));
+    }
     throw error;
   }
 }
