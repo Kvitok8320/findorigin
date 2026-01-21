@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test-bot": "tsx scripts/test-bot.ts",
-    "check-webhook": "tsx scripts/check-webhook.ts"
+    "check-webhook": "tsx scripts/check-webhook.ts",
+    "set-webhook": "tsx scripts/set-webhook.ts"
   },
   "dependencies": {
     "next": "^14.2.0",
