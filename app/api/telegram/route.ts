@@ -12,7 +12,28 @@ import { searchMultipleQueries } from '@/lib/source-searcher';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Валидация webhook secret (если настроен)
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const secretToken = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+      if (secretToken !== webhookSecret) {
+        console.warn('Invalid webhook secret token');
+        return NextResponse.json(
+          { error: 'Unauthorized' },
+          { status: 401 }
+        );
+      }
+    }
+
     const update: TelegramUpdate = await request.json();
+    
+    // Валидация структуры update
+    if (!update || typeof update.update_id !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid update format' },
+        { status: 400 }
+      );
+    }
     
     // Быстрый ответ 200 OK (обработка будет асинхронной)
     const response = NextResponse.json({ ok: true });

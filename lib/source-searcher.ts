@@ -75,42 +75,68 @@ export function filterBySourceType(
 /**
  * Поиск источников через поисковую систему
  * 
- * Примечание: Для работы требуется API ключ от поисковой системы
- * Здесь реализована базовая структура. В продакшене нужно использовать:
+ * Поддерживает несколько поисковых API:
  * - Google Custom Search API
  * - Bing Search API
  * - SerpAPI
- * - или другие сервисы
  */
 export async function searchSources(
   query: string,
   options: SourceSearchOptions = {}
 ): Promise<SearchResult[]> {
-  const { maxResults = 10, preferredTypes } = options;
+  const { maxResults = 10 } = options;
 
-  // TODO: Интеграция с реальным поисковым API
-  // Пример для Google Custom Search API:
-  /*
-  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-  const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  // Попытка использовать Google Custom Search API
+  const googleApiKey = process.env.GOOGLE_API_KEY;
+  const googleSearchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
   
-  const response = await fetch(
-    `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}`
-  );
-  
-  const data = await response.json();
-  const results = data.items?.map((item: any) => ({
-    title: item.title,
-    url: item.link,
-    snippet: item.snippet,
-    sourceType: getSourceType(item.link),
-  })) || [];
-  */
+  if (googleApiKey && googleSearchEngineId) {
+    try {
+      const { searchWithGoogle } = await import('./search-apis/google-search');
+      return await searchWithGoogle(query, {
+        apiKey: googleApiKey,
+        searchEngineId: googleSearchEngineId,
+        maxResults,
+      });
+    } catch (error) {
+      console.error('Google Search API error:', error);
+      // Продолжаем попытки с другими API
+    }
+  }
 
-  // Временная заглушка для разработки
-  console.log(`Searching for: ${query}`);
+  // Попытка использовать Bing Search API
+  const bingApiKey = process.env.BING_API_KEY;
   
-  // Возвращаем пустой массив, так как требуется настройка API
+  if (bingApiKey) {
+    try {
+      const { searchWithBing } = await import('./search-apis/bing-search');
+      return await searchWithBing(query, {
+        apiKey: bingApiKey,
+        maxResults,
+      });
+    } catch (error) {
+      console.error('Bing Search API error:', error);
+      // Продолжаем попытки с другими API
+    }
+  }
+
+  // Попытка использовать SerpAPI
+  const serpApiKey = process.env.SERPAPI_KEY;
+  
+  if (serpApiKey) {
+    try {
+      const { searchWithSerpAPI } = await import('./search-apis/serpapi-search');
+      return await searchWithSerpAPI(query, {
+        apiKey: serpApiKey,
+        maxResults,
+      });
+    } catch (error) {
+      console.error('SerpAPI error:', error);
+    }
+  }
+
+  // Если ни один API не настроен, возвращаем пустой массив
+  console.log(`No search API configured. Searching for: ${query}`);
   return [];
 }
 

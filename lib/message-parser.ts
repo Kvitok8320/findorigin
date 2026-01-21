@@ -27,7 +27,16 @@ export function parseUpdate(update: TelegramUpdate): ParsedMessage | null {
   const { message } = update;
   const chatId = message.chat.id;
   const messageId = message.message_id;
-  const text = message.text || '';
+  
+  // Получаем текст из сообщения или пересланного сообщения
+  let text = message.text || '';
+  
+  // Если сообщение переслано, пытаемся извлечь информацию
+  if (!text && message.forward_from_chat) {
+    // Для пересланных сообщений текст может быть недоступен через Bot API
+    // Но мы можем использовать информацию о пересланном сообщении
+    text = `[Пересланное сообщение из ${message.forward_from_chat.title || message.forward_from_chat.username || 'канала'}]`;
+  }
 
   // Проверка на ссылку на Telegram-пост
   const telegramLink = parseTelegramLink(text);

@@ -26,6 +26,19 @@ export interface TelegramUpdate {
       length: number;
       url?: string;
     }>;
+    forward_from?: {
+      id: number;
+      is_bot: boolean;
+      first_name: string;
+      username?: string;
+    };
+    forward_from_chat?: {
+      id: number;
+      type: 'private' | 'group' | 'supergroup' | 'channel';
+      title?: string;
+      username?: string;
+    };
+    forward_from_message_id?: number;
   };
 }
 
