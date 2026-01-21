@@ -64,8 +64,10 @@ export async function POST(request: NextRequest) {
  */
 async function processUpdate(update: TelegramUpdate) {
   console.log('[PROCESS] Starting update processing');
+  console.log('[PROCESS] Update ID:', update.update_id);
   
   try {
+    console.log('[PROCESS] Parsing message...');
     // Парсинг сообщения
     const parsed = parseUpdate(update);
     
@@ -78,14 +80,27 @@ async function processUpdate(update: TelegramUpdate) {
     console.log('[PROCESS] Parsed message:', { chatId, textLength: text.length, isLink });
 
     // Проверка токена перед отправкой
+    console.log('[PROCESS] Checking TELEGRAM_BOT_TOKEN...');
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       console.error('[PROCESS] TELEGRAM_BOT_TOKEN is not set!');
       return;
     }
+    console.log('[PROCESS] TELEGRAM_BOT_TOKEN is set');
 
     // Отправляем сообщение о начале обработки
     console.log('[PROCESS] Sending initial message to chat:', chatId);
-    await sendMessage(chatId, '🔍 Анализирую запрос...');
+    try {
+      await sendMessage(chatId, '🔍 Анализирую запрос...');
+      console.log('[PROCESS] Initial message sent successfully');
+    } catch (sendError: any) {
+      console.error('[PROCESS] Failed to send initial message:', sendError.message);
+      console.error('[PROCESS] Send error details:', {
+        name: sendError.name,
+        code: sendError.code,
+        cause: sendError.cause,
+      });
+      throw sendError;
+    }
 
     let textToAnalyze = text;
 
