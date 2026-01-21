@@ -66,8 +66,12 @@ export function filterBySourceType(
   }
 
   // Сначала показываем предпочитаемые типы, затем остальные
-  const preferred = results.filter(r => preferredTypes.includes(r.sourceType));
-  const others = results.filter(r => !preferredTypes.includes(r.sourceType));
+  const preferred = results.filter(r => 
+    preferredTypes.includes(r.sourceType as 'official' | 'news' | 'blog' | 'research')
+  );
+  const others = results.filter(r => 
+    !preferredTypes.includes(r.sourceType as 'official' | 'news' | 'blog' | 'research')
+  );
 
   return [...preferred, ...others];
 }

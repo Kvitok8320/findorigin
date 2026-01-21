@@ -3,13 +3,19 @@
  */
 
 const TELEGRAM_API_URL = process.env.TELEGRAM_API_URL || 'https://api.telegram.org/bot';
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-if (!BOT_TOKEN) {
-  throw new Error('TELEGRAM_BOT_TOKEN is not set in environment variables');
+/**
+ * Получение базового URL API с проверкой токена
+ */
+function getApiBase(): string {
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  
+  if (!BOT_TOKEN) {
+    throw new Error('TELEGRAM_BOT_TOKEN is not set in environment variables');
+  }
+  
+  return `${TELEGRAM_API_URL}${BOT_TOKEN}`;
 }
-
-const API_BASE = `${TELEGRAM_API_URL}${BOT_TOKEN}`;
 
 /**
  * Отправка сообщения через Telegram API
@@ -18,6 +24,7 @@ export async function sendMessage(chatId: number, text: string, options?: {
   parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
   reply_to_message_id?: number;
 }) {
+  const API_BASE = getApiBase();
   const response = await fetch(`${API_BASE}/sendMessage`, {
     method: 'POST',
     headers: {
@@ -42,6 +49,7 @@ export async function sendMessage(chatId: number, text: string, options?: {
  * Установка webhook
  */
 export async function setWebhook(url: string, secretToken?: string) {
+  const API_BASE = getApiBase();
   const response = await fetch(`${API_BASE}/setWebhook`, {
     method: 'POST',
     headers: {
@@ -65,6 +73,7 @@ export async function setWebhook(url: string, secretToken?: string) {
  * Получение информации о боте
  */
 export async function getMe() {
+  const API_BASE = getApiBase();
   const response = await fetch(`${API_BASE}/getMe`);
   
   if (!response.ok) {
@@ -81,6 +90,7 @@ export async function getMe() {
  * но можно использовать forwardMessage или другие методы
  */
 export async function getChat(chatId: number | string) {
+  const API_BASE = getApiBase();
   const response = await fetch(`${API_BASE}/getChat`, {
     method: 'POST',
     headers: {

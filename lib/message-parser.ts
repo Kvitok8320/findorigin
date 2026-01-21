@@ -13,7 +13,7 @@ export interface ParsedMessage {
   telegramLink?: {
     channel: string;
     messageId: number;
-  };
+  } | null;
 }
 
 /**
