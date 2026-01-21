@@ -15,6 +15,12 @@ const nextConfig = {
       },
     ];
   },
+  // Настройка для работы fetch в serverless функциях
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
 };
 
 module.exports = nextConfig;

@@ -25,24 +25,57 @@ export async function sendMessage(chatId: number, text: string, options?: {
   reply_to_message_id?: number;
 }) {
   const API_BASE = getApiBase();
-  const response = await fetch(`${API_BASE}/sendMessage`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      ...options,
-    }),
-  });
+  const url = `${API_BASE}/sendMessage`;
+  
+  try {
+    console.log('[TELEGRAM] Sending message to:', url);
+    console.log('[TELEGRAM] Chat ID:', chatId);
+    console.log('[TELEGRAM] Text length:', text.length);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'FindOrigin-Bot/1.0',
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        ...options,
+      }),
+      // Явно указываем, что это внешний запрос
+      cache: 'no-store',
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Telegram API error: ${JSON.stringify(error)}`);
+    console.log('[TELEGRAM] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[TELEGRAM] Error response:', errorText);
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { description: errorText || 'Unknown error' };
+      }
+      throw new Error(`Telegram API error: ${JSON.stringify(error)}`);
+    }
+
+    const result = await response.json();
+    console.log('[TELEGRAM] Message sent successfully');
+    return result;
+  } catch (error: any) {
+    // Логируем детали ошибки для диагностики
+    console.error('[TELEGRAM] Send message error:', {
+      url,
+      chatId,
+      error: error.message,
+      errorName: error.name,
+      errorCode: error.code,
+      stack: error.stack,
+    });
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -74,14 +107,20 @@ export async function setWebhook(url: string, secretToken?: string) {
  */
 export async function getMe() {
   const API_BASE = getApiBase();
-  const response = await fetch(`${API_BASE}/getMe`);
   
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Failed to get bot info: ${JSON.stringify(error)}`);
-  }
+  try {
+    const response = await fetch(`${API_BASE}/getMe`);
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ description: 'Unknown error' }));
+      throw new Error(`Failed to get bot info: ${JSON.stringify(error)}`);
+    }
 
-  return response.json();
+    return response.json();
+  } catch (error: any) {
+    console.error('[TELEGRAM] Get me error:', error.message);
+    throw error;
+  }
 }
 
 /**
@@ -91,21 +130,27 @@ export async function getMe() {
  */
 export async function getChat(chatId: number | string) {
   const API_BASE = getApiBase();
-  const response = await fetch(`${API_BASE}/getChat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      chat_id: chatId,
-    }),
-  });
+  
+  try {
+    const response = await fetch(`${API_BASE}/getChat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chat_id: chatId,
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Failed to get chat: ${JSON.stringify(error)}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ description: 'Unknown error' }));
+      throw new Error(`Failed to get chat: ${JSON.stringify(error)}`);
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error('[TELEGRAM] Get chat error:', error.message);
+    throw error;
   }
-
-  return response.json();
 }
 
