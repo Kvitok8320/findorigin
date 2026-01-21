@@ -11,13 +11,15 @@ import { searchMultipleQueries } from '@/lib/source-searcher';
  * POST /api/telegram
  */
 export async function POST(request: NextRequest) {
+  console.log('[WEBHOOK] Received request');
+  
   try {
     // Валидация webhook secret (если настроен)
     const webhookSecret = process.env.WEBHOOK_SECRET;
     if (webhookSecret) {
       const secretToken = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
       if (secretToken !== webhookSecret) {
-        console.warn('Invalid webhook secret token');
+        console.warn('[WEBHOOK] Invalid webhook secret token');
         return NextResponse.json(
           { error: 'Unauthorized' },
           { status: 401 }
@@ -26,9 +28,11 @@ export async function POST(request: NextRequest) {
     }
 
     const update: TelegramUpdate = await request.json();
+    console.log('[WEBHOOK] Update received:', update.update_id, update.message?.text?.substring(0, 50));
     
     // Валидация структуры update
     if (!update || typeof update.update_id !== 'number') {
+      console.error('[WEBHOOK] Invalid update format');
       return NextResponse.json(
         { error: 'Invalid update format' },
         { status: 400 }
@@ -40,12 +44,14 @@ export async function POST(request: NextRequest) {
     
     // Асинхронная обработка update
     processUpdate(update).catch((error) => {
-      console.error('Error in async update processing:', error);
+      console.error('[WEBHOOK] Error in async update processing:', error);
+      console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
     });
     
     return response;
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('[WEBHOOK] Error processing webhook:', error);
+    console.error('[WEBHOOK] Error details:', error instanceof Error ? error.message : String(error));
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -57,18 +63,28 @@ export async function POST(request: NextRequest) {
  * Асинхронная обработка update от Telegram
  */
 async function processUpdate(update: TelegramUpdate) {
+  console.log('[PROCESS] Starting update processing');
+  
   try {
     // Парсинг сообщения
     const parsed = parseUpdate(update);
     
     if (!parsed) {
-      console.log('No message in update');
+      console.log('[PROCESS] No message in update');
       return;
     }
 
     const { chatId, text, isLink, telegramLink } = parsed;
+    console.log('[PROCESS] Parsed message:', { chatId, textLength: text.length, isLink });
+
+    // Проверка токена перед отправкой
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      console.error('[PROCESS] TELEGRAM_BOT_TOKEN is not set!');
+      return;
+    }
 
     // Отправляем сообщение о начале обработки
+    console.log('[PROCESS] Sending initial message to chat:', chatId);
     await sendMessage(chatId, '🔍 Анализирую запрос...');
 
     let textToAnalyze = text;
@@ -169,19 +185,25 @@ async function processUpdate(update: TelegramUpdate) {
     }
 
   } catch (error) {
-    console.error('Error processing update:', error);
+    console.error('[PROCESS] Error processing update:', error);
+    console.error('[PROCESS] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+    console.error('[PROCESS] Error message:', error instanceof Error ? error.message : String(error));
+    console.error('[PROCESS] Error stack:', error instanceof Error ? error.stack : 'No stack');
     
     // Пытаемся отправить сообщение об ошибке пользователю
     try {
       const parsed = parseUpdate(update);
-      if (parsed) {
+      if (parsed && process.env.TELEGRAM_BOT_TOKEN) {
+        console.log('[PROCESS] Attempting to send error message to chat:', parsed.chatId);
         await sendMessage(
           parsed.chatId,
           '❌ Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже.'
         );
+      } else {
+        console.error('[PROCESS] Cannot send error message - no parsed message or token');
       }
     } catch (sendError) {
-      console.error('Error sending error message:', sendError);
+      console.error('[PROCESS] Error sending error message:', sendError);
     }
   }
 }
