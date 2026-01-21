@@ -34,25 +34,46 @@ export async function sendMessage(chatId: number, text: string, options?: {
     console.log('[TELEGRAM] Starting fetch request...');
     
     const fetchStartTime = Date.now();
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'FindOrigin-Bot/1.0',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        ...options,
-      }),
-      // Явно указываем, что это внешний запрос
-      cache: 'no-store',
-    });
     
-    const fetchDuration = Date.now() - fetchStartTime;
-    console.log('[TELEGRAM] Fetch completed in', fetchDuration, 'ms');
-    console.log('[TELEGRAM] Response status:', response.status);
-    console.log('[TELEGRAM] Response ok:', response.ok);
+    // Добавляем таймаут для fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[TELEGRAM] Fetch timeout after 10 seconds');
+      controller.abort();
+    }, 10000); // 10 секунд таймаут
+    
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'FindOrigin-Bot/1.0',
+        },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          ...options,
+        }),
+        // Явно указываем, что это внешний запрос
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.log('[TELEGRAM] Fetch completed in', fetchDuration, 'ms');
+      console.log('[TELEGRAM] Response status:', response.status);
+      console.log('[TELEGRAM] Response ok:', response.ok);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.error('[TELEGRAM] Fetch failed after', fetchDuration, 'ms');
+      console.error('[TELEGRAM] Fetch error name:', fetchError?.name);
+      console.error('[TELEGRAM] Fetch error message:', fetchError?.message);
+      console.error('[TELEGRAM] Fetch error code:', fetchError?.code);
+      throw fetchError;
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
