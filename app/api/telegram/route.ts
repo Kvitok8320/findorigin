@@ -44,11 +44,36 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Быстрый ответ 200 OK (обработка будет асинхронной)
+    // Обрабатываем update синхронно до отправки первого сообщения
+    // Это гарантирует, что функция не будет прервана Vercel
+    // После отправки первого сообщения возвращаем ответ и продолжаем обработку асинхронно
+    
+    // Парсим сообщение для получения chatId
+    const parsed = parseUpdate(update);
+    if (!parsed) {
+      console.log('[WEBHOOK] No message in update, returning 200 OK');
+      return NextResponse.json({ ok: true });
+    }
+
+    const { chatId } = parsed;
+    console.log('[WEBHOOK] Parsed chatId:', chatId);
+    
+    // Отправляем первое сообщение синхронно (до возврата ответа)
+    // Это гарантирует, что функция будет работать до завершения отправки
+    try {
+      console.log('[WEBHOOK] Sending initial message synchronously...');
+      await sendMessage(chatId, '🔍 Анализирую запрос...');
+      console.log('[WEBHOOK] Initial message sent, returning 200 OK');
+    } catch (error: any) {
+      console.error('[WEBHOOK] Failed to send initial message:', error.message);
+      // Даже если не удалось отправить, возвращаем 200 OK
+      // чтобы Telegram не повторял запрос
+    }
+    
+    // Теперь возвращаем ответ и продолжаем обработку асинхронно
     const response = NextResponse.json({ ok: true });
     
-    // Асинхронная обработка update
-    // Используем setTimeout(0) чтобы гарантировать, что ответ вернется до начала обработки
+    // Продолжаем обработку асинхронно (но первое сообщение уже отправлено)
     setTimeout(() => {
       processUpdate(update).catch((error) => {
         console.error('[WEBHOOK] Error in async update processing:', error);
@@ -96,20 +121,8 @@ async function processUpdate(update: TelegramUpdate) {
     }
     console.log('[PROCESS] TELEGRAM_BOT_TOKEN is set');
 
-    // Отправляем сообщение о начале обработки
-    console.log('[PROCESS] Sending initial message to chat:', chatId);
-    try {
-      await sendMessage(chatId, '🔍 Анализирую запрос...');
-      console.log('[PROCESS] Initial message sent successfully');
-    } catch (sendError: any) {
-      console.error('[PROCESS] Failed to send initial message:', sendError.message);
-      console.error('[PROCESS] Send error details:', {
-        name: sendError.name,
-        code: sendError.code,
-        cause: sendError.cause,
-      });
-      throw sendError;
-    }
+    // Первое сообщение уже отправлено синхронно в POST handler
+    // Продолжаем обработку без дублирования
 
     let textToAnalyze = text;
 
