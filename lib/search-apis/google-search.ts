@@ -45,6 +45,7 @@ export async function searchWithGoogle(
     
     let response;
     try {
+      console.log('[GOOGLE_SEARCH] Fetch call started at', new Date().toISOString());
       response = await fetch(url.toString(), {
         signal: controller.signal,
         headers: {
@@ -52,15 +53,22 @@ export async function searchWithGoogle(
         },
       });
       clearTimeout(timeoutId);
+      console.log('[GOOGLE_SEARCH] Fetch call completed at', new Date().toISOString());
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       const fetchDuration = Date.now() - fetchStartTime;
       console.error('[GOOGLE_SEARCH] Fetch failed after', fetchDuration, 'ms');
-      console.error('[GOOGLE_SEARCH] Fetch error:', fetchError?.name, fetchError?.message);
+      console.error('[GOOGLE_SEARCH] Fetch error name:', fetchError?.name);
+      console.error('[GOOGLE_SEARCH] Fetch error message:', fetchError?.message);
+      console.error('[GOOGLE_SEARCH] Fetch error code:', fetchError?.code);
+      if (fetchError?.cause) {
+        console.error('[GOOGLE_SEARCH] Fetch error cause:', fetchError.cause);
+      }
       throw new Error(`Google Search API fetch error: ${fetchError?.message || 'Unknown error'}`);
     }
     
     const fetchDuration = Date.now() - fetchStartTime;
+    console.log('[GOOGLE_SEARCH] Fetch completed in', fetchDuration, 'ms');
     
     console.log('[GOOGLE_SEARCH] Fetch completed in', fetchDuration, 'ms');
     console.log('[GOOGLE_SEARCH] Response status:', response.status);
