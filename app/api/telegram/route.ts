@@ -3,8 +3,8 @@ import { parseUpdate } from '@/lib/message-parser';
 import type { TelegramUpdate } from '@/lib/types';
 import { sendMessage } from '@/lib/telegram';
 import { extractTextFromTelegramPost, requestMessageForward, cleanText } from '@/lib/telegram-post-extractor';
-import { analyzeText } from '@/lib/text-analyzer';
-import { searchMultipleQueries } from '@/lib/source-searcher';
+import { searchSources } from '@/lib/source-searcher';
+import { compareWithAI, selectTopSources } from '@/lib/ai-comparison';
 
 /**
  * Webhook endpoint для получения updates от Telegram
@@ -84,13 +84,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
       }
       
-      // Очистка и анализ текста
+      // Очистка текста
       const cleanedText = cleanText(textToAnalyze);
-      const analyzedData = analyzeText(cleanedText);
       
       // Отправляем второе сообщение синхронно
       console.log('[WEBHOOK] Sending second message synchronously...');
-      await sendMessage(chatId, '🔎 Ищу возможные источники...');
+      await sendMessage(chatId, '🔎 Ищу возможные источники через Google Search...');
       console.log('[WEBHOOK] Second message sent');
       
       // Проверяем, настроен ли поисковый API
@@ -212,16 +211,10 @@ async function processUpdate(update: TelegramUpdate) {
     const cleanedText = cleanText(textToAnalyze);
     console.log('[PROCESS] Cleaned text length:', cleanedText.length);
 
-    // Анализ текста
-    console.log('[PROCESS] Analyzing text...');
-    const analyzedData = analyzeText(cleanedText);
-    console.log('[PROCESS] Analysis complete. Key claims:', analyzedData.keyClaims.length, 'Search queries:', analyzedData.searchQueries.length);
-
-    // Второе сообщение уже отправлено синхронно в POST handler
-    // Продолжаем поиск источников
-    console.log('[PROCESS] Starting search with queries:', analyzedData.searchQueries);
-
-    const searchResults = await searchMultipleQueries(analyzedData.searchQueries, {
+    // Поиск источников по исходному тексту (без предварительного анализа)
+    console.log('[PROCESS] Starting search with original text');
+    
+    const searchResults = await searchSources(cleanedText, {
       maxResults: 10,
       preferredTypes: ['official', 'news', 'research', 'blog'],
     });
@@ -247,15 +240,42 @@ async function processUpdate(update: TelegramUpdate) {
       console.log('[PROCESS] No results found, sending error message');
       await sendMessage(
         chatId,
-        '❌ Не удалось найти источники по вашему запросу.'
+        '❌ Не удалось найти источники по вашему запросу. Попробуйте переформулировать запрос.'
       );
       console.log('[PROCESS] Error message sent, processing complete');
       return;
     }
 
-    // Выбираем топ-3 результата
-    const topResults = searchResults.slice(0, 3);
-    console.log('[PROCESS] Selected top results:', topResults.length);
+    // Отправляем сообщение о начале AI сравнения
+    console.log('[PROCESS] Sending AI comparison message...');
+    await sendMessage(chatId, '🤖 Сравниваю источники с исходным текстом через AI...');
+    console.log('[PROCESS] AI comparison message sent');
+
+    // AI сравнение источников с исходным текстом
+    console.log('[PROCESS] Starting AI comparison...');
+    let topResults: Array<{ source: typeof searchResults[0]; relevanceScore: number; confidence: string; explanation: string }>;
+    
+    try {
+      const comparisons = await compareWithAI(cleanedText, searchResults);
+      const selected = selectTopSources(comparisons, 3);
+      topResults = selected.map(c => ({
+        source: c.source,
+        relevanceScore: c.relevanceScore,
+        confidence: c.confidence,
+        explanation: c.explanation,
+      }));
+      console.log('[PROCESS] AI comparison completed. Top results:', topResults.length);
+    } catch (aiError: any) {
+      console.error('[PROCESS] AI comparison failed:', aiError.message);
+      // Fallback: используем первые 3 результата без AI оценки
+      topResults = searchResults.slice(0, 3).map(source => ({
+        source,
+        relevanceScore: 50,
+        confidence: 'medium',
+        explanation: 'AI сравнение недоступно',
+      }));
+      console.log('[PROCESS] Using fallback results without AI comparison');
+    }
 
     // Формируем сообщение с результатами
     let responseText = '📚 Найденные источники:\n\n';
@@ -268,23 +288,25 @@ async function processUpdate(update: TelegramUpdate) {
         blog: '✍️',
         research: '🔬',
         other: '🔗',
-      }[result.sourceType] || '🔗';
+      }[result.source.sourceType] || '🔗';
 
-      responseText += `${index + 1}. ${typeEmoji} ${result.title}\n`;
-      responseText += `   ${result.url}\n`;
-      if (result.snippet) {
-        responseText += `   ${result.snippet.substring(0, 100)}...\n`;
+      const confidenceEmoji = {
+        high: '✅',
+        medium: '⚠️',
+        low: '❓',
+      }[result.confidence as 'high' | 'medium' | 'low'] || '⚠️';
+
+      responseText += `${index + 1}. ${typeEmoji} ${result.source.title}\n`;
+      responseText += `   ${result.source.url}\n`;
+      responseText += `   ${confidenceEmoji} Релевантность: ${result.relevanceScore}% (${result.confidence})\n`;
+      if (result.explanation) {
+        responseText += `   ${result.explanation.substring(0, 80)}...\n`;
+      }
+      if (result.source.snippet) {
+        responseText += `   ${result.source.snippet.substring(0, 100)}...\n`;
       }
       responseText += '\n';
     });
-
-    // Добавляем информацию об анализе
-    if (analyzedData.keyClaims.length > 0) {
-      responseText += '\n📌 Ключевые утверждения:\n';
-      analyzedData.keyClaims.slice(0, 2).forEach((claim, i) => {
-        responseText += `${i + 1}. ${claim.substring(0, 80)}...\n`;
-      });
-    }
 
     // Отправляем ответ (разбиваем на части, если слишком длинный)
     const maxLength = 4096; // Максимальная длина сообщения в Telegram
