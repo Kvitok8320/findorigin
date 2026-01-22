@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Обрабатываем update синхронно до отправки первого сообщения
+    // Обрабатываем update синхронно до отправки первых сообщений
     // Это гарантирует, что функция не будет прервана Vercel
-    // После отправки первого сообщения возвращаем ответ и продолжаем обработку асинхронно
+    // После отправки первых сообщений возвращаем ответ и продолжаем обработку асинхронно
     
     // Парсим сообщение для получения chatId
     const parsed = parseUpdate(update);
@@ -55,25 +55,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const { chatId } = parsed;
-    console.log('[WEBHOOK] Parsed chatId:', chatId);
+    const { chatId, text, isLink, telegramLink } = parsed;
+    console.log('[WEBHOOK] Parsed message:', { chatId, textLength: text.length, isLink });
     
     // Отправляем первое сообщение синхронно (до возврата ответа)
-    // Это гарантирует, что функция будет работать до завершения отправки
     try {
       console.log('[WEBHOOK] Sending initial message synchronously...');
       await sendMessage(chatId, '🔍 Анализирую запрос...');
-      console.log('[WEBHOOK] Initial message sent, returning 200 OK');
+      console.log('[WEBHOOK] Initial message sent');
     } catch (error: any) {
       console.error('[WEBHOOK] Failed to send initial message:', error.message);
       // Даже если не удалось отправить, возвращаем 200 OK
       // чтобы Telegram не повторял запрос
     }
     
+    // Быстро обрабатываем текст и отправляем второе сообщение синхронно
+    try {
+      let textToAnalyze = text;
+      
+      // Если это ссылка на Telegram-пост, пока просто используем текст
+      // (извлечение поста займет время, делаем асинхронно)
+      
+      if (!textToAnalyze || textToAnalyze.trim().length === 0) {
+        await sendMessage(
+          chatId,
+          '❌ Не удалось получить текст для анализа. Пожалуйста, отправьте текст или ссылку на Telegram-пост.'
+        );
+        return NextResponse.json({ ok: true });
+      }
+      
+      // Очистка и анализ текста
+      const cleanedText = cleanText(textToAnalyze);
+      const analyzedData = analyzeText(cleanedText);
+      
+      // Отправляем второе сообщение синхронно
+      console.log('[WEBHOOK] Sending second message synchronously...');
+      await sendMessage(chatId, '🔎 Ищу возможные источники...');
+      console.log('[WEBHOOK] Second message sent');
+      
+    } catch (error: any) {
+      console.error('[WEBHOOK] Error in synchronous processing:', error.message);
+    }
+    
     // Теперь возвращаем ответ и продолжаем обработку асинхронно
     const response = NextResponse.json({ ok: true });
     
-    // Продолжаем обработку асинхронно (но первое сообщение уже отправлено)
+    // Продолжаем обработку асинхронно (поиск источников и отправка результатов)
     setTimeout(() => {
       processUpdate(update).catch((error) => {
         console.error('[WEBHOOK] Error in async update processing:', error);
