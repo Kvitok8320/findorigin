@@ -159,14 +159,18 @@ async function processUpdate(update: TelegramUpdate) {
 
     // Поиск источников
     await sendMessage(chatId, '🔎 Ищу возможные источники...');
+    console.log('[PROCESS] Starting search with queries:', analyzedData.searchQueries);
 
     const searchResults = await searchMultipleQueries(analyzedData.searchQueries, {
       maxResults: 10,
       preferredTypes: ['official', 'news', 'research', 'blog'],
     });
 
+    console.log('[PROCESS] Search completed. Results count:', searchResults.length);
+
     // Формирование ответа
     if (searchResults.length === 0) {
+      console.log('[PROCESS] No results found, sending error message');
       await sendMessage(
         chatId,
         '❌ Не удалось найти источники. Возможно, требуется настройка поискового API.\n\n' +
@@ -176,14 +180,17 @@ async function processUpdate(update: TelegramUpdate) {
         '- SerpAPI\n' +
         'или другой поисковый сервис.'
       );
+      console.log('[PROCESS] Error message sent, processing complete');
       return;
     }
 
     // Выбираем топ-3 результата
     const topResults = searchResults.slice(0, 3);
+    console.log('[PROCESS] Selected top results:', topResults.length);
 
     // Формируем сообщение с результатами
     let responseText = '📚 Найденные источники:\n\n';
+    console.log('[PROCESS] Building response text...');
 
     topResults.forEach((result, index) => {
       const typeEmoji = {
@@ -212,14 +219,18 @@ async function processUpdate(update: TelegramUpdate) {
 
     // Отправляем ответ (разбиваем на части, если слишком длинный)
     const maxLength = 4096; // Максимальная длина сообщения в Telegram
+    console.log('[PROCESS] Response text length:', responseText.length);
     if (responseText.length > maxLength) {
+      console.log('[PROCESS] Response too long, splitting into parts');
       const parts = responseText.match(new RegExp(`.{1,${maxLength - 100}}`, 'g')) || [];
       for (const part of parts) {
         await sendMessage(chatId, part);
       }
     } else {
+      console.log('[PROCESS] Sending response message...');
       await sendMessage(chatId, responseText);
     }
+    console.log('[PROCESS] Response sent successfully, processing complete');
 
   } catch (error) {
     console.error('[PROCESS] Error processing update:', error);
