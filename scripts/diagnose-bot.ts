@@ -6,8 +6,8 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
-// Загружаем .env.local
-const envPath = resolve(process.cwd(), '.env.local');
+// Загружаем .env
+const envPath = resolve(process.cwd(), '.env');
 config({ path: envPath });
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -28,7 +28,7 @@ async function checkToken() {
     results.push({
       name: 'Токен бота',
       status: 'error',
-      message: 'TELEGRAM_BOT_TOKEN не найден в .env.local'
+      message: 'TELEGRAM_BOT_TOKEN не найден в .env'
     });
     return;
   }

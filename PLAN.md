@@ -8,7 +8,7 @@
 3. Установить необходимые зависимости
 
 1.2. Настройка переменных окружения
-1. Создать `.env.local` файл
+1. Создать `.env` файл
 2. Добавить переменные:
    1. `TELEGRAM_BOT_TOKEN` - токен бота от BotFather
    2. `TELEGRAM_API_URL` - базовый URL Telegram API
@@ -101,7 +101,7 @@
    3. ✅ Ограничение ключа (рекомендуется):
       1. ✅ Выбор "Restrict key"
       2. ✅ В разделе "API restrictions" выбрать "Custom Search API"
-      3. ✅ Сохранение ключа (ключ сохранен в .env.local)
+      3. ✅ Сохранение ключа (ключ сохранен в .env)
 5. ✅ Создание поисковой машины (Custom Search Engine):
    1. ✅ Переход на https://cse.google.com/cse/all
    2. ✅ Нажатие "Add" для создания новой поисковой системы
@@ -111,11 +111,11 @@
       3. ✅ Настройка области поиска (весь интернет или конкретные сайты)
    4. ✅ Получение Search Engine ID (cx) из настроек созданной системы (ID: 52fb00e8fe74e4451)
 6. ✅ Сохранение ключей:
-   1. ✅ `GOOGLE_API_KEY` - API ключ из Google Cloud Console (сохранен в .env.local)
-   2. ✅ `GOOGLE_SEARCH_ENGINE_ID` - Search Engine ID из cse.google.com (52fb00e8fe74e4451, сохранен в .env.local)
+   1. ✅ `GOOGLE_API_KEY` - API ключ из Google Cloud Console (сохранен в .env)
+   2. ✅ `GOOGLE_SEARCH_ENGINE_ID` - Search Engine ID из cse.google.com (52fb00e8fe74e4451, сохранен в .env)
 
 6.1.2. Bing Search API (альтернатива Google)
-1. Регистрация/вход в Azure Portal (https://portal.azure.com)
+1. Регистрация/вход в Azure Portal (https://poripital.azure.com)
 2. Создание ресурса Bing Search:
    1. Поиск "Bing Search v7" в Azure Marketplace
    2. Нажатие "Create"
@@ -142,7 +142,7 @@
    1. `SERPAPI_KEY` - API ключ из SerpAPI Dashboard
 
 6.2. Настройка переменных окружения
-1. ✅ Добавление ключей в `.env.local` для локальной разработки:
+1. ✅ Добавление ключей в `.env` для локальной разработки:
    1. ✅ `GOOGLE_API_KEY=your_google_api_key` (сохранен)
    2. ✅ `GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id` (сохранен: 52fb00e8fe74e4451)
    3. `BING_API_KEY=your_bing_api_key` (опционально)
@@ -220,7 +220,7 @@
 3. Использование для разработки/тестирования
 
 7.2. Настройка переменных окружения
-1. ✅ Добавление ключей в `.env.local` для локальной разработки:
+1. ✅ Добавление ключей в `.env` для локальной разработки:
    1. ✅ `OPENAI_API_KEY=your_openai_key` (обязательно для продакшена, сохранен)
    2. `ANTHROPIC_API_KEY=your_anthropic_key` (опционально)
 2. ✅ Добавление ключей в Vercel для продакшена:

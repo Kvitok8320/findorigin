@@ -3,17 +3,17 @@
  * Запуск: npm run test-bot
  */
 
-// Загружаем переменные окружения из .env.local ПЕРЕД импортом других модулей
+// Загружаем переменные окружения из .env ПЕРЕД импортом других модулей
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
-// Загружаем .env.local
-const envPath = resolve(process.cwd(), '.env.local');
+// Загружаем .env
+const envPath = resolve(process.cwd(), '.env');
 config({ path: envPath });
 
 // Проверяем, что токен загружен
 if (!process.env.TELEGRAM_BOT_TOKEN) {
-  console.error('❌ TELEGRAM_BOT_TOKEN не найден в .env.local');
+  console.error('❌ TELEGRAM_BOT_TOKEN не найден в .env');
   console.error(`   Проверьте файл: ${envPath}`);
   console.error('   Убедитесь, что файл существует и содержит строку:');
   console.error('   TELEGRAM_BOT_TOKEN=ваш_токен');
@@ -60,7 +60,7 @@ async function testBot() {
   } catch (error: any) {
     console.error('❌ Ошибка:', error.message);
     console.error('\n💡 Проверьте:');
-    console.error('   - Правильно ли указан TELEGRAM_BOT_TOKEN в .env.local');
+    console.error('   - Правильно ли указан TELEGRAM_BOT_TOKEN в .env');
     console.error('   - Не содержит ли токен лишних пробелов');
     console.error('   - Действителен ли токен (не был ли отозван)');
     process.exit(1);

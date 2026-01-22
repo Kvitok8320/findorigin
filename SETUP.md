@@ -2,7 +2,7 @@
 
 ## Шаг 1: Получение токена бота ✅
 
-Вы уже получили токен от @BotFather и указали его в `.env.local`.
+Вы уже получили токен от @BotFather и указали его в `.env`.
 
 ## Шаг 2: Проверка токена
 
@@ -84,7 +84,7 @@ Telegram не может отправлять webhook на `localhost`, поэт
 3. Включите Custom Search API
 4. Создайте API ключ
 5. Создайте поисковую систему на https://cse.google.com
-6. Добавьте в `.env.local`:
+6. Добавьте в `.env`:
    ```
    GOOGLE_API_KEY=ваш_ключ
    GOOGLE_SEARCH_ENGINE_ID=ваш_id
@@ -94,7 +94,7 @@ Telegram не может отправлять webhook на `localhost`, поэт
 1. Перейдите на https://portal.azure.com
 2. Создайте ресурс "Bing Search v7"
 3. Получите ключ API
-4. Добавьте в `.env.local`:
+4. Добавьте в `.env`:
    ```
    BING_API_KEY=ваш_ключ
    ```
@@ -102,7 +102,7 @@ Telegram не может отправлять webhook на `localhost`, поэт
 ### SerpAPI:
 1. Зарегистрируйтесь на https://serpapi.com
 2. Получите API ключ
-3. Добавьте в `.env.local`:
+3. Добавьте в `.env`:
    ```
    SERPAPI_KEY=ваш_ключ
    ```
@@ -116,7 +116,7 @@ Telegram не может отправлять webhook на `localhost`, поэт
 
 ### Ошибка "Unauthorized":
 - Проверьте правильность токена
-- Убедитесь, что токен указан в `.env.local` без лишних пробелов
+- Убедитесь, что токен указан в `.env` без лишних пробелов
 
 ### Webhook не работает:
 - Убедитесь, что URL доступен из интернета (не localhost)
