@@ -10,6 +10,7 @@
     "test-bot": "tsx scripts/test-bot.ts",
     "check-webhook": "tsx scripts/check-webhook.ts",
     "set-webhook": "tsx scripts/set-webhook.ts",
+    "fix-webhook": "tsx scripts/fix-webhook.ts",
     "check-health": "curl https://findorigin.vercel.app/api/health",
     "diagnose-bot": "tsx scripts/diagnose-bot.ts"
   },
