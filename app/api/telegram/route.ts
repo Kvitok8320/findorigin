@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
   try {
     // Валидация webhook secret (если настроен)
     const webhookSecret = process.env.WEBHOOK_SECRET;
-    if (webhookSecret) {
+    // Игнорируем значение по умолчанию из env.example
+    if (webhookSecret && webhookSecret !== 'your_webhook_secret_here') {
       const secretToken = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
       if (secretToken !== webhookSecret) {
         console.warn('[WEBHOOK] Invalid webhook secret token');

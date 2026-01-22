@@ -14,6 +14,7 @@ const envPath = resolve(process.cwd(), '.env');
 config({ path: envPath });
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const VERCEL_URL = process.env.VERCEL_URL || process.argv[2] || 'https://findorigin.vercel.app';
 
 if (!BOT_TOKEN) {
@@ -37,14 +38,25 @@ async function setWebhook() {
     console.log('🔧 Устанавливаю webhook...\n');
     console.log(`   URL: ${webhookUrl}\n`);
     
+    const webhookBody: { url: string; secret_token?: string } = {
+      url: webhookUrl,
+    };
+    
+    // Если WEBHOOK_SECRET установлен, добавляем его к webhook
+    if (WEBHOOK_SECRET && WEBHOOK_SECRET !== 'your_webhook_secret_here') {
+      webhookBody.secret_token = WEBHOOK_SECRET;
+      console.log('   Использую WEBHOOK_SECRET для безопасности\n');
+    } else if (WEBHOOK_SECRET === 'your_webhook_secret_here') {
+      console.log('   ⚠️  WEBHOOK_SECRET установлен, но имеет значение по умолчанию.');
+      console.log('   Рекомендуется закомментировать WEBHOOK_SECRET в .env или установить реальное значение.\n');
+    }
+    
     const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        url: webhookUrl,
-      }),
+      body: JSON.stringify(webhookBody),
     });
 
     const data = await response.json();
