@@ -65,17 +65,30 @@ export async function searchWithGoogle(
     console.log('[GOOGLE_SEARCH] Fetch completed in', fetchDuration, 'ms');
     console.log('[GOOGLE_SEARCH] Response status:', response.status);
     console.log('[GOOGLE_SEARCH] Response ok:', response.ok);
+    console.log('[GOOGLE_SEARCH] Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[GOOGLE_SEARCH] Error response text:', errorText);
+      console.error('[GOOGLE_SEARCH] Error response text (first 500 chars):', errorText.substring(0, 500));
       let error;
       try {
         error = JSON.parse(errorText);
-      } catch {
+        console.error('[GOOGLE_SEARCH] Parsed error:', JSON.stringify(error, null, 2));
+      } catch (parseError) {
+        console.error('[GOOGLE_SEARCH] Failed to parse error as JSON:', parseError);
         error = { error: errorText || 'Unknown error' };
       }
-      console.error('[GOOGLE_SEARCH] Parsed error:', JSON.stringify(error));
+      
+      // Детальная информация об ошибке
+      if (error.error) {
+        console.error('[GOOGLE_SEARCH] Error code:', error.error.code);
+        console.error('[GOOGLE_SEARCH] Error message:', error.error.message);
+        console.error('[GOOGLE_SEARCH] Error status:', error.error.status);
+        if (error.error.errors) {
+          console.error('[GOOGLE_SEARCH] Error details:', JSON.stringify(error.error.errors, null, 2));
+        }
+      }
+      
       throw new Error(`Google Search API error: ${JSON.stringify(error)}`);
     }
     
