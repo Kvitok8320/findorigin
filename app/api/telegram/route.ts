@@ -173,11 +173,14 @@ async function processUpdate(update: TelegramUpdate) {
 
     // Первое сообщение уже отправлено синхронно в POST handler
     // Продолжаем обработку без дублирования
+    console.log('[PROCESS] Continuing with text processing...');
 
     let textToAnalyze = text;
+    console.log('[PROCESS] Initial textToAnalyze length:', textToAnalyze.length);
 
     // Если это ссылка на Telegram-пост, пытаемся извлечь текст
     if (isLink && telegramLink) {
+      console.log('[PROCESS] Processing Telegram link...');
       const post = await extractTextFromTelegramPost(
         telegramLink.channel,
         telegramLink.messageId
@@ -185,7 +188,9 @@ async function processUpdate(update: TelegramUpdate) {
 
       if (post && post.text) {
         textToAnalyze = post.text;
+        console.log('[PROCESS] Extracted text from post, length:', textToAnalyze.length);
       } else {
+        console.log('[PROCESS] Failed to extract text from post, requesting forward');
         // Если не удалось извлечь, просим пользователя переслать сообщение
         await requestMessageForward(chatId);
         return;
@@ -194,6 +199,7 @@ async function processUpdate(update: TelegramUpdate) {
 
     // Проверка на пустой текст
     if (!textToAnalyze || textToAnalyze.trim().length === 0) {
+      console.log('[PROCESS] Text is empty, sending error message');
       await sendMessage(
         chatId,
         '❌ Не удалось получить текст для анализа. Пожалуйста, отправьте текст или ссылку на Telegram-пост.'
@@ -202,10 +208,14 @@ async function processUpdate(update: TelegramUpdate) {
     }
 
     // Очистка текста
+    console.log('[PROCESS] Cleaning text...');
     const cleanedText = cleanText(textToAnalyze);
+    console.log('[PROCESS] Cleaned text length:', cleanedText.length);
 
     // Анализ текста
+    console.log('[PROCESS] Analyzing text...');
     const analyzedData = analyzeText(cleanedText);
+    console.log('[PROCESS] Analysis complete. Key claims:', analyzedData.keyClaims.length, 'Search queries:', analyzedData.searchQueries.length);
 
     // Второе сообщение уже отправлено синхронно в POST handler
     // Продолжаем поиск источников
