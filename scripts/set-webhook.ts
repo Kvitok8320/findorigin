@@ -14,22 +14,20 @@ const envPath = resolve(process.cwd(), '.env.local');
 config({ path: envPath });
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const VERCEL_URL = process.env.VERCEL_URL || process.argv[2];
+const VERCEL_URL = process.env.VERCEL_URL || process.argv[2] || 'https://findorigin.vercel.app';
 
 if (!BOT_TOKEN) {
   console.error('❌ TELEGRAM_BOT_TOKEN не найден в .env.local');
   process.exit(1);
 }
 
-if (!VERCEL_URL) {
-  console.error('❌ VERCEL_URL не указан');
-  console.error('   Использование:');
-  console.error('   npm run set-webhook');
-  console.error('   или');
-  console.error('   VERCEL_URL=https://your-project.vercel.app npm run set-webhook');
-  console.error('   или');
-  console.error('   npm run set-webhook https://your-project.vercel.app');
-  process.exit(1);
+// Если VERCEL_URL не указан, используем значение по умолчанию
+if (!VERCEL_URL || VERCEL_URL === 'undefined') {
+  console.log('ℹ️  VERCEL_URL не указан, использую значение по умолчанию: https://findorigin.vercel.app');
+  console.log('   Чтобы указать другой URL:');
+  console.log('   VERCEL_URL=https://your-project.vercel.app npm run set-webhook');
+  console.log('   или');
+  console.log('   npm run set-webhook https://your-project.vercel.app\n');
 }
 
 const webhookUrl = `${VERCEL_URL}/api/telegram`;
