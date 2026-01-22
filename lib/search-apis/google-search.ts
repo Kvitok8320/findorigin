@@ -20,12 +20,19 @@ export async function searchWithGoogle(
   const { apiKey, searchEngineId, maxResults = 10 } = options;
 
   try {
+    // Логируем для диагностики (без полного ключа)
+    console.log('[GOOGLE_SEARCH] API Key prefix:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT SET');
+    console.log('[GOOGLE_SEARCH] Search Engine ID:', searchEngineId ? `${searchEngineId.substring(0, 10)}...` : 'NOT SET');
+    console.log('[GOOGLE_SEARCH] Query:', query.substring(0, 50));
+    
     const url = new URL('https://www.googleapis.com/customsearch/v1');
     url.searchParams.set('key', apiKey);
     url.searchParams.set('cx', searchEngineId);
     url.searchParams.set('q', query);
     url.searchParams.set('num', String(Math.min(maxResults, 10))); // Google ограничивает до 10 за запрос
 
+    console.log('[GOOGLE_SEARCH] Request URL (without key):', url.toString().replace(/key=[^&]+/, 'key=***'));
+    
     const response = await fetch(url.toString());
 
     if (!response.ok) {

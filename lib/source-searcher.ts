@@ -94,8 +94,16 @@ export async function searchSources(
   const googleApiKey = process.env.GOOGLE_API_KEY;
   const googleSearchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
   
+  console.log('[SEARCH] Checking Google API:', {
+    hasApiKey: !!googleApiKey,
+    hasSearchEngineId: !!googleSearchEngineId,
+    apiKeyLength: googleApiKey?.length || 0,
+    searchEngineIdLength: googleSearchEngineId?.length || 0,
+  });
+  
   if (googleApiKey && googleSearchEngineId) {
     try {
+      console.log('[SEARCH] Attempting Google search...');
       const { searchWithGoogle } = await import('./search-apis/google-search');
       return await searchWithGoogle(query, {
         apiKey: googleApiKey,
@@ -103,9 +111,14 @@ export async function searchSources(
         maxResults,
       });
     } catch (error) {
-      console.error('Google Search API error:', error);
+      console.error('[SEARCH] Google Search API error:', error);
       // Продолжаем попытки с другими API
     }
+  } else {
+    console.log('[SEARCH] Google API not configured:', {
+      missingApiKey: !googleApiKey,
+      missingSearchEngineId: !googleSearchEngineId,
+    });
   }
 
   // Попытка использовать Bing Search API
