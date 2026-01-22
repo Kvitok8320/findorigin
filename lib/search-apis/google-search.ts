@@ -33,25 +33,47 @@ export async function searchWithGoogle(
 
     console.log('[GOOGLE_SEARCH] Request URL (without key):', url.toString().replace(/key=[^&]+/, 'key=***'));
     
+    console.log('[GOOGLE_SEARCH] Sending fetch request...');
+    const fetchStartTime = Date.now();
     const response = await fetch(url.toString());
-
+    const fetchDuration = Date.now() - fetchStartTime;
+    
+    console.log('[GOOGLE_SEARCH] Fetch completed in', fetchDuration, 'ms');
+    console.log('[GOOGLE_SEARCH] Response status:', response.status);
+    console.log('[GOOGLE_SEARCH] Response ok:', response.ok);
+    
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const errorText = await response.text();
+      console.error('[GOOGLE_SEARCH] Error response text:', errorText);
+      let error;
+      try {
+        error = JSON.parse(errorText);
+      } catch {
+        error = { error: errorText || 'Unknown error' };
+      }
+      console.error('[GOOGLE_SEARCH] Parsed error:', JSON.stringify(error));
       throw new Error(`Google Search API error: ${JSON.stringify(error)}`);
     }
+    
+    console.log('[GOOGLE_SEARCH] Response OK, parsing JSON...');
 
     const data = await response.json();
+    console.log('[GOOGLE_SEARCH] JSON parsed. Items count:', data.items?.length || 0);
 
     if (!data.items || data.items.length === 0) {
+      console.log('[GOOGLE_SEARCH] No items in response');
       return [];
     }
 
-    return data.items.map((item: any) => ({
+    const results = data.items.map((item: any) => ({
       title: item.title,
       url: item.link,
       snippet: item.snippet || '',
       sourceType: getSourceType(item.link),
     }));
+    
+    console.log('[GOOGLE_SEARCH] Mapped results:', results.length);
+    return results;
   } catch (error) {
     console.error('Error searching with Google:', error);
     throw error;
