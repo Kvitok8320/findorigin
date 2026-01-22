@@ -89,12 +89,12 @@
 6.1. Получение доступа к поисковым API
 
 6.1.1. Google Custom Search API
-1. Регистрация/вход в Google Cloud Console (https://console.cloud.google.com)
-2. Создание нового проекта или выбор существующего
-3. Включение Custom Search API в проекте:
-   1. Переход в "APIs & Services" → "Library"
-   2. Поиск "Custom Search API"
-   3. Нажатие "Enable" для активации API
+1. ✅ Регистрация/вход в Google Cloud Console (https://console.cloud.google.com)
+2. ✅ Создание нового проекта или выбор существующего (проект "findorigin")
+3. ✅ Включение Custom Search API в проекте:
+   1. ✅ Переход в "APIs & Services" → "Library"
+   2. ✅ Поиск "Custom Search API"
+   3. ✅ Нажатие "Enable" для активации API
 4. Создание API ключа:
    1. Переход в "APIs & Services" → "Credentials"
    2. Нажатие "Create Credentials" → "API Key"
