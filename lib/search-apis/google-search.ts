@@ -35,7 +35,31 @@ export async function searchWithGoogle(
     
     console.log('[GOOGLE_SEARCH] Sending fetch request...');
     const fetchStartTime = Date.now();
-    const response = await fetch(url.toString());
+    
+    // Добавляем таймаут для fetch запроса
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[GOOGLE_SEARCH] Fetch timeout after 15 seconds');
+      controller.abort();
+    }, 15000); // 15 секунд таймаут
+    
+    let response;
+    try {
+      response = await fetch(url.toString(), {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'FindOrigin-Bot/1.0',
+        },
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.error('[GOOGLE_SEARCH] Fetch failed after', fetchDuration, 'ms');
+      console.error('[GOOGLE_SEARCH] Fetch error:', fetchError?.name, fetchError?.message);
+      throw new Error(`Google Search API fetch error: ${fetchError?.message || 'Unknown error'}`);
+    }
+    
     const fetchDuration = Date.now() - fetchStartTime;
     
     console.log('[GOOGLE_SEARCH] Fetch completed in', fetchDuration, 'ms');
