@@ -93,6 +93,29 @@ export async function POST(request: NextRequest) {
       await sendMessage(chatId, '🔎 Ищу возможные источники...');
       console.log('[WEBHOOK] Second message sent');
       
+      // Проверяем, настроен ли поисковый API
+      const hasSearchAPI = !!(
+        process.env.GOOGLE_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID ||
+        process.env.BING_API_KEY ||
+        process.env.SERPAPI_KEY
+      );
+      
+      // Если поисковый API не настроен, отправляем финальное сообщение синхронно
+      // Это гарантирует, что пользователь получит ответ
+      if (!hasSearchAPI) {
+        console.log('[WEBHOOK] No search API configured, sending error message synchronously...');
+        await sendMessage(
+          chatId,
+          '❌ Не удалось найти источники. Возможно, требуется настройка поискового API.\n\n' +
+          'Для работы функции поиска необходимо настроить один из следующих сервисов:\n' +
+          '- Google Custom Search API\n' +
+          '- Bing Search API\n' +
+          '- SerpAPI\n' +
+          'или другой поисковый сервис.'
+        );
+        console.log('[WEBHOOK] Error message sent synchronously');
+      }
+      
     } catch (error: any) {
       console.error('[WEBHOOK] Error in synchronous processing:', error.message);
     }
@@ -184,8 +207,8 @@ async function processUpdate(update: TelegramUpdate) {
     // Анализ текста
     const analyzedData = analyzeText(cleanedText);
 
-    // Поиск источников
-    await sendMessage(chatId, '🔎 Ищу возможные источники...');
+    // Второе сообщение уже отправлено синхронно в POST handler
+    // Продолжаем поиск источников
     console.log('[PROCESS] Starting search with queries:', analyzedData.searchQueries);
 
     const searchResults = await searchMultipleQueries(analyzedData.searchQueries, {
@@ -197,15 +220,24 @@ async function processUpdate(update: TelegramUpdate) {
 
     // Формирование ответа
     if (searchResults.length === 0) {
+      // Проверяем, было ли уже отправлено сообщение об ошибке синхронно
+      const hasSearchAPI = !!(
+        process.env.GOOGLE_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID ||
+        process.env.BING_API_KEY ||
+        process.env.SERPAPI_KEY
+      );
+      
+      // Если поисковый API не настроен, сообщение уже отправлено синхронно
+      if (!hasSearchAPI) {
+        console.log('[PROCESS] No results found, but error message already sent synchronously');
+        return;
+      }
+      
+      // Если API настроен, но результатов нет - отправляем сообщение
       console.log('[PROCESS] No results found, sending error message');
       await sendMessage(
         chatId,
-        '❌ Не удалось найти источники. Возможно, требуется настройка поискового API.\n\n' +
-        'Для работы функции поиска необходимо настроить один из следующих сервисов:\n' +
-        '- Google Custom Search API\n' +
-        '- Bing Search API\n' +
-        '- SerpAPI\n' +
-        'или другой поисковый сервис.'
+        '❌ Не удалось найти источники по вашему запросу.'
       );
       console.log('[PROCESS] Error message sent, processing complete');
       return;
