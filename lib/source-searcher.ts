@@ -105,13 +105,21 @@ export async function searchSources(
     try {
       console.log('[SEARCH] Attempting Google search...');
       const { searchWithGoogle } = await import('./search-apis/google-search');
-      return await searchWithGoogle(query, {
-        apiKey: googleApiKey,
-        searchEngineId: googleSearchEngineId,
-        maxResults,
-      });
-    } catch (error) {
-      console.error('[SEARCH] Google Search API error:', error);
+      const results = await Promise.race([
+        searchWithGoogle(query, {
+          apiKey: googleApiKey,
+          searchEngineId: googleSearchEngineId,
+          maxResults,
+        }),
+        new Promise<SearchResult[]>((_, reject) => 
+          setTimeout(() => reject(new Error('Google search timeout after 20 seconds')), 20000)
+        ),
+      ]);
+      console.log('[SEARCH] Google search completed successfully');
+      return results;
+    } catch (error: any) {
+      console.error('[SEARCH] Google Search API error:', error?.message || error);
+      console.error('[SEARCH] Error type:', error?.name || typeof error);
       // Продолжаем попытки с другими API
     }
   } else {
