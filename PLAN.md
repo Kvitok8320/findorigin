@@ -142,15 +142,15 @@
    1. `SERPAPI_KEY` - API ключ из SerpAPI Dashboard
 
 6.2. Настройка переменных окружения
-1. Добавление ключей в `.env.local` для локальной разработки:
-   1. `GOOGLE_API_KEY=your_google_api_key`
-   2. `GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id`
+1. ✅ Добавление ключей в `.env.local` для локальной разработки:
+   1. ✅ `GOOGLE_API_KEY=your_google_api_key` (сохранен)
+   2. ✅ `GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id` (сохранен: 52fb00e8fe74e4451)
    3. `BING_API_KEY=your_bing_api_key` (опционально)
    4. `SERPAPI_KEY=your_serpapi_key` (опционально)
-2. Добавление ключей в Vercel для продакшена:
-   1. Переход в Settings → Environment Variables
-   2. Добавление всех необходимых переменных
-   3. Передеплой проекта после добавления
+2. ✅ Добавление ключей в Vercel для продакшена:
+   1. ✅ Переход в Settings → Environment Variables
+   2. ✅ Добавление всех необходимых переменных (GOOGLE_API_KEY, GOOGLE_SEARCH_ENGINE_ID, TELEGRAM_BOT_TOKEN, TELEGRAM_API_URL)
+   3. ✅ Передеплой проекта после добавления (Redeploy выполнен, статус: Ready)
 
 6.3. Интеграция с поисковыми системами
 1. Реализация функции поиска для каждого API:
