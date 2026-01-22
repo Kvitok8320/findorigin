@@ -9,7 +9,12 @@ import { searchMultipleQueries } from '@/lib/source-searcher';
 /**
  * Webhook endpoint для получения updates от Telegram
  * POST /api/telegram
+ * 
+ * Runtime configuration для Vercel
  */
+export const runtime = 'nodejs';
+export const maxDuration = 30; // Максимальное время выполнения (секунды)
+
 export async function POST(request: NextRequest) {
   console.log('[WEBHOOK] Received request');
   
@@ -43,11 +48,15 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ ok: true });
     
     // Асинхронная обработка update
-    processUpdate(update).catch((error) => {
-      console.error('[WEBHOOK] Error in async update processing:', error);
-      console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
-    });
+    // Используем setTimeout(0) чтобы гарантировать, что ответ вернется до начала обработки
+    setTimeout(() => {
+      processUpdate(update).catch((error) => {
+        console.error('[WEBHOOK] Error in async update processing:', error);
+        console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
+      });
+    }, 0);
     
+    console.log('[WEBHOOK] Returning 200 OK, processing will continue asynchronously');
     return response;
   } catch (error) {
     console.error('[WEBHOOK] Error processing webhook:', error);

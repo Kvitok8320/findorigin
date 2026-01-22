@@ -44,7 +44,13 @@ export async function sendMessage(chatId: number, text: string, options?: {
     
     let response;
     try {
-      response = await fetch(url, {
+      console.log('[TELEGRAM] Creating fetch request with body:', JSON.stringify({
+        chat_id: chatId,
+        text: text.substring(0, 50) + '...',
+        ...options,
+      }));
+      
+      const fetchPromise = fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,35 +66,50 @@ export async function sendMessage(chatId: number, text: string, options?: {
         signal: controller.signal,
       });
       
+      console.log('[TELEGRAM] Fetch promise created, awaiting...');
+      response = await fetchPromise;
+      console.log('[TELEGRAM] Fetch promise resolved');
+      
       clearTimeout(timeoutId);
       const fetchDuration = Date.now() - fetchStartTime;
       console.log('[TELEGRAM] Fetch completed in', fetchDuration, 'ms');
       console.log('[TELEGRAM] Response status:', response.status);
       console.log('[TELEGRAM] Response ok:', response.ok);
+      console.log('[TELEGRAM] Response headers:', Object.fromEntries(response.headers.entries()));
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       const fetchDuration = Date.now() - fetchStartTime;
       console.error('[TELEGRAM] Fetch failed after', fetchDuration, 'ms');
+      console.error('[TELEGRAM] Fetch error type:', typeof fetchError);
       console.error('[TELEGRAM] Fetch error name:', fetchError?.name);
       console.error('[TELEGRAM] Fetch error message:', fetchError?.message);
       console.error('[TELEGRAM] Fetch error code:', fetchError?.code);
+      console.error('[TELEGRAM] Fetch error cause:', fetchError?.cause);
+      console.error('[TELEGRAM] Is AbortError:', fetchError?.name === 'AbortError');
+      if (fetchError?.stack) {
+        console.error('[TELEGRAM] Fetch error stack:', fetchError.stack.substring(0, 500));
+      }
       throw fetchError;
     }
 
+    console.log('[TELEGRAM] Checking response status...');
     if (!response.ok) {
+      console.error('[TELEGRAM] Response not OK, reading error text...');
       const errorText = await response.text();
-      console.error('[TELEGRAM] Error response:', errorText);
+      console.error('[TELEGRAM] Error response text:', errorText);
       let error;
       try {
         error = JSON.parse(errorText);
       } catch {
         error = { description: errorText || 'Unknown error' };
       }
+      console.error('[TELEGRAM] Parsed error:', JSON.stringify(error));
       throw new Error(`Telegram API error: ${JSON.stringify(error)}`);
     }
 
-    console.log('[TELEGRAM] Parsing response JSON...');
+    console.log('[TELEGRAM] Response OK, parsing JSON...');
     const result = await response.json();
+    console.log('[TELEGRAM] JSON parsed successfully');
     console.log('[TELEGRAM] Message sent successfully');
     console.log('[TELEGRAM] Response result:', JSON.stringify(result).substring(0, 100));
     return result;
