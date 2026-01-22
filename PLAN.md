@@ -95,24 +95,24 @@
    1. ✅ Переход в "APIs & Services" → "Library"
    2. ✅ Поиск "Custom Search API"
    3. ✅ Нажатие "Enable" для активации API
-4. Создание API ключа:
-   1. Переход в "APIs & Services" → "Credentials"
-   2. Нажатие "Create Credentials" → "API Key"
-   3. Ограничение ключа (рекомендуется):
-      1. Выбор "Restrict key"
-      2. В разделе "API restrictions" выбрать "Custom Search API"
-      3. Сохранение ключа
-5. Создание поисковой машины (Custom Search Engine):
-   1. Переход на https://cse.google.com/cse/all
-   2. Нажатие "Add" для создания новой поисковой системы
-   3. Настройка поисковой системы:
-      1. Ввод названия и описания
-      2. Выбор языка
-      3. Настройка области поиска (весь интернет или конкретные сайты)
-   4. Получение Search Engine ID (cx) из настроек созданной системы
-6. Сохранение ключей:
-   1. `GOOGLE_API_KEY` - API ключ из Google Cloud Console
-   2. `GOOGLE_SEARCH_ENGINE_ID` - Search Engine ID из cse.google.com
+4. ✅ Создание API ключа:
+   1. ✅ Переход в "APIs & Services" → "Credentials"
+   2. ✅ Нажатие "Create Credentials" → "API Key" (создан ключ "API_KEY_FINDORIGIN")
+   3. ✅ Ограничение ключа (рекомендуется):
+      1. ✅ Выбор "Restrict key"
+      2. ✅ В разделе "API restrictions" выбрать "Custom Search API"
+      3. ✅ Сохранение ключа (ключ сохранен в .env.local)
+5. ✅ Создание поисковой машины (Custom Search Engine):
+   1. ✅ Переход на https://cse.google.com/cse/all
+   2. ✅ Нажатие "Add" для создания новой поисковой системы
+   3. ✅ Настройка поисковой системы:
+      1. ✅ Ввод названия и описания (название: "education")
+      2. ✅ Выбор языка
+      3. ✅ Настройка области поиска (весь интернет или конкретные сайты)
+   4. ✅ Получение Search Engine ID (cx) из настроек созданной системы (ID: 52fb00e8fe74e4451)
+6. ✅ Сохранение ключей:
+   1. ✅ `GOOGLE_API_KEY` - API ключ из Google Cloud Console (сохранен в .env.local)
+   2. ✅ `GOOGLE_SEARCH_ENGINE_ID` - Search Engine ID из cse.google.com (52fb00e8fe74e4451, сохранен в .env.local)
 
 6.1.2. Bing Search API (альтернатива Google)
 1. Регистрация/вход в Azure Portal (https://portal.azure.com)
