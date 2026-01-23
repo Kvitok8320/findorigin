@@ -91,6 +91,25 @@ export async function searchSources(
 ): Promise<SearchResult[]> {
   const { maxResults = 10 } = options;
 
+  // Попытка использовать Яндекс.Поиск API (приоритет для РФ, проверяется первым)
+  const yandexApiKey = process.env.YANDEX_API_KEY;
+  
+  if (yandexApiKey) {
+    try {
+      console.log('[SEARCH] Attempting Yandex search...');
+      const { searchWithYandex } = await import('./search-apis/yandex-search');
+      const results = await searchWithYandex(query, {
+        apiKey: yandexApiKey,
+        maxResults,
+      });
+      console.log('[SEARCH] Yandex search completed successfully');
+      return results;
+    } catch (error: any) {
+      console.error('[SEARCH] Yandex Search API error:', error?.message || error);
+      // Продолжаем попытки с другими API
+    }
+  }
+
   // Попытка использовать Google Custom Search API
   const googleApiKey = process.env.GOOGLE_API_KEY;
   const googleSearchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
@@ -128,25 +147,6 @@ export async function searchSources(
       missingApiKey: !googleApiKey,
       missingSearchEngineId: !googleSearchEngineId,
     });
-  }
-
-  // Попытка использовать Яндекс.Поиск API (приоритет для РФ)
-  const yandexApiKey = process.env.YANDEX_API_KEY;
-  
-  if (yandexApiKey) {
-    try {
-      console.log('[SEARCH] Attempting Yandex search...');
-      const { searchWithYandex } = await import('./search-apis/yandex-search');
-      const results = await searchWithYandex(query, {
-        apiKey: yandexApiKey,
-        maxResults,
-      });
-      console.log('[SEARCH] Yandex search completed successfully');
-      return results;
-    } catch (error: any) {
-      console.error('[SEARCH] Yandex Search API error:', error?.message || error);
-      // Продолжаем попытки с другими API
-    }
   }
 
   // Попытка использовать Bing Search API
