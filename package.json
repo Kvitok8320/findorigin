@@ -12,7 +12,8 @@
     "set-webhook": "tsx scripts/set-webhook.ts",
     "fix-webhook": "tsx scripts/fix-webhook.ts",
     "check-health": "curl https://findorigin.vercel.app/api/health",
-    "diagnose-bot": "tsx scripts/diagnose-bot.ts"
+    "diagnose-bot": "tsx scripts/diagnose-bot.ts",
+    "test-yandex-key": "tsx scripts/test-yandex-key.ts"
   },
   "dependencies": {
     "next": "^14.2.0",
