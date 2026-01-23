@@ -141,11 +141,20 @@ export async function POST(request: NextRequest) {
     console.log('[WEBHOOK] Scheduling async processing...');
     setTimeout(() => {
       console.log('[WEBHOOK] Async processing started, calling processUpdate...');
-      processUpdate(update).catch((error) => {
-        console.error('[WEBHOOK] Error in async update processing:', error);
-        console.error('[WEBHOOK] Error message:', error instanceof Error ? error.message : String(error));
-        console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
-      });
+      console.log('[WEBHOOK] Update object:', JSON.stringify(update).substring(0, 200));
+      try {
+        const processPromise = processUpdate(update);
+        console.log('[WEBHOOK] processUpdate promise created');
+        processPromise.catch((error) => {
+          console.error('[WEBHOOK] Error in async update processing:', error);
+          console.error('[WEBHOOK] Error message:', error instanceof Error ? error.message : String(error));
+          console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
+          console.error('[WEBHOOK] Error name:', error instanceof Error ? error.name : typeof error);
+        });
+      } catch (syncError) {
+        console.error('[WEBHOOK] Synchronous error calling processUpdate:', syncError);
+        console.error('[WEBHOOK] Sync error message:', syncError instanceof Error ? syncError.message : String(syncError));
+      }
     }, 0);
     
     console.log('[WEBHOOK] Returning 200 OK, processing will continue asynchronously');
@@ -164,8 +173,10 @@ export async function POST(request: NextRequest) {
  * Асинхронная обработка update от Telegram
  */
 async function processUpdate(update: TelegramUpdate) {
-  console.log('[PROCESS] Starting update processing');
-  console.log('[PROCESS] Update ID:', update.update_id);
+  try {
+    console.log('[PROCESS] Function called, starting update processing');
+    console.log('[PROCESS] Update ID:', update?.update_id);
+    console.log('[PROCESS] Update type:', update?.message ? 'message' : update?.callback_query ? 'callback_query' : 'unknown');
   
   try {
     console.log('[PROCESS] Parsing message...');

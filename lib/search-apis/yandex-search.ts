@@ -47,17 +47,17 @@ export async function searchWithYandex(
     console.log('[YANDEX_SEARCH] Query (first 100 chars):', query.substring(0, 100));
     console.log('[YANDEX_SEARCH] Folder ID:', folderId || 'not set');
     
-    // Обрезаем запрос до разумной длины (первые 200 символов или до первого предложения)
+    // Обрезаем запрос до максимальной длины (400 символов согласно документации)
     let searchQuery = query.trim();
-    if (searchQuery.length > 200) {
+    if (searchQuery.length > 400) {
       // Пытаемся обрезать по предложению
-      const sentenceEnd = searchQuery.substring(0, 200).lastIndexOf('.');
+      const sentenceEnd = searchQuery.substring(0, 400).lastIndexOf('.');
       if (sentenceEnd > 50) {
         searchQuery = searchQuery.substring(0, sentenceEnd + 1);
       } else {
-        searchQuery = searchQuery.substring(0, 200);
+        searchQuery = searchQuery.substring(0, 400);
       }
-      console.log('[YANDEX_SEARCH] Query truncated to:', searchQuery.length, 'chars');
+      console.log('[YANDEX_SEARCH] Query truncated to:', searchQuery.length, 'chars (max 400)');
     }
 
     if (!folderId) {
