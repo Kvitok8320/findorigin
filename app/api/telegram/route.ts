@@ -134,32 +134,36 @@ export async function POST(request: NextRequest) {
       console.error('[WEBHOOK] Error in synchronous processing:', error.message);
     }
     
-    // Теперь возвращаем ответ и продолжаем обработку асинхронно
-    const response = NextResponse.json({ ok: true });
+    // Обрабатываем запрос синхронно, чтобы Vercel не прерывал выполнение
+    // Используем таймаут, чтобы уложиться в лимит Vercel (30 секунд)
+    console.log('[WEBHOOK] Starting synchronous processing with timeout...');
     
-    // Продолжаем обработку асинхронно (поиск источников и отправка результатов)
-    // Используем queueMicrotask для более надежной асинхронной обработки на Vercel
-    console.log('[WEBHOOK] Scheduling async processing...');
-    queueMicrotask(() => {
-      console.log('[WEBHOOK] Async processing started, calling processUpdate...');
-      console.log('[WEBHOOK] Update object:', JSON.stringify(update).substring(0, 200));
-      try {
-        const processPromise = processUpdate(update);
-        console.log('[WEBHOOK] processUpdate promise created');
-        processPromise.catch((error) => {
-          console.error('[WEBHOOK] Error in async update processing:', error);
-          console.error('[WEBHOOK] Error message:', error instanceof Error ? error.message : String(error));
-          console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
-          console.error('[WEBHOOK] Error name:', error instanceof Error ? error.name : typeof error);
-        });
-      } catch (syncError) {
-        console.error('[WEBHOOK] Synchronous error calling processUpdate:', syncError);
-        console.error('[WEBHOOK] Sync error message:', syncError instanceof Error ? syncError.message : String(syncError));
-      }
+    const processingPromise = processUpdate(update);
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Processing timeout after 25 seconds'));
+      }, 25000);
     });
     
-    console.log('[WEBHOOK] Returning 200 OK, processing will continue asynchronously');
-    return response;
+    try {
+      // Ждем завершения обработки или таймаута
+      await Promise.race([processingPromise, timeoutPromise]);
+      console.log('[WEBHOOK] Processing completed successfully');
+    } catch (error: any) {
+      console.error('[WEBHOOK] Error in processing:', error?.message || error);
+      // Отправляем сообщение об ошибке, если обработка не завершилась
+      try {
+        await sendMessage(
+          chatId,
+          '❌ Произошла ошибка при обработке запроса. Попробуйте позже.'
+        );
+      } catch (sendError) {
+        console.error('[WEBHOOK] Failed to send error message:', sendError);
+      }
+    }
+    
+    console.log('[WEBHOOK] Returning 200 OK');
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[WEBHOOK] Error processing webhook:', error);
     console.error('[WEBHOOK] Error details:', error instanceof Error ? error.message : String(error));
