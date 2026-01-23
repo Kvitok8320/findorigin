@@ -315,10 +315,33 @@ function parseYandexSearchResults(rawData: string, maxResults: number): SearchRe
   console.log('[YANDEX_SEARCH] Parsing XML response, length:', rawData.length);
 
   // Парсим XML используя регулярные выражения
-  // Формат Яндекс.Поиска: <doc><url>...</url><title>...</title><passage>...</passage></doc>
-  const docMatches = rawData.match(/<doc>[\s\S]*?<\/doc>/g);
+  // Формат Яндекс.Поиска может быть разным:
+  // 1. <doc><url>...</url><title>...</title><passage>...</passage></doc>
+  // 2. <group><doc>...</doc></group>
+  // 3. Прямо в <response>
   
-  if (docMatches) {
+  // Сначала пробуем найти <doc> теги (могут быть внутри <group> или напрямую)
+  let docMatches: RegExpMatchArray | null = rawData.match(/<doc>[\s\S]*?<\/doc>/g);
+  
+  // Если не нашли, пробуем найти внутри <group>
+  if (!docMatches) {
+    const groupMatches = rawData.match(/<group>[\s\S]*?<\/group>/g);
+    if (groupMatches) {
+      console.log('[YANDEX_SEARCH] Found', groupMatches.length, 'groups, extracting docs from groups...');
+      const allDocs: string[] = [];
+      for (const groupXml of groupMatches) {
+        const groupDocMatches = groupXml.match(/<doc>[\s\S]*?<\/doc>/g);
+        if (groupDocMatches) {
+          allDocs.push(...groupDocMatches);
+        }
+      }
+      if (allDocs.length > 0) {
+        docMatches = allDocs as RegExpMatchArray;
+      }
+    }
+  }
+  
+  if (docMatches && docMatches.length > 0) {
     console.log('[YANDEX_SEARCH] Found', docMatches.length, 'documents in XML');
     
     for (const docXml of docMatches.slice(0, maxResults)) {
@@ -341,8 +364,18 @@ function parseYandexSearchResults(rawData: string, maxResults: number): SearchRe
     }
   } else {
     console.log('[YANDEX_SEARCH] No <doc> tags found in XML response');
-    // Пробуем альтернативный формат, если есть
-    console.log('[YANDEX_SEARCH] First 500 chars of rawData:', rawData.substring(0, 500));
+    // Пробуем найти количество результатов
+    const foundMatch = rawData.match(/<found[^>]*>(\d+)<\/found>/);
+    if (foundMatch) {
+      console.log('[YANDEX_SEARCH] Found', foundMatch[1], 'results in XML, but no <doc> tags');
+    }
+    // Выводим больше XML для диагностики
+    console.log('[YANDEX_SEARCH] First 1000 chars of XML:', rawData.substring(0, 1000));
+    // Пробуем найти любые теги с URL
+    const urlMatches = rawData.match(/<url>([\s\S]*?)<\/url>/g);
+    if (urlMatches) {
+      console.log('[YANDEX_SEARCH] Found', urlMatches.length, 'URL tags outside <doc> tags');
+    }
   }
 
   console.log('[YANDEX_SEARCH] Parsed results:', results.length);
