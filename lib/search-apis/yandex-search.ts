@@ -184,32 +184,42 @@ export async function searchWithYandex(
           : `Api-Key ${apiKey}`;
         
         console.log(`[YANDEX_SEARCH] Auth error with ${currentAuthType}, trying ${altAuthType} format...`);
+        console.log(`[YANDEX_SEARCH] Alternative auth header format: ${altAuthType}`);
         
         // Пробуем альтернативный формат авторизации
-        const altResponse = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': altAuthHeader,
-            'Content-Type': 'application/json',
-            'User-Agent': 'FindOrigin-Bot/1.0',
-          },
-          body: JSON.stringify(requestBody),
-        });
+        try {
+          console.log('[YANDEX_SEARCH] Attempting alternative auth format...');
+          const altResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': altAuthHeader,
+              'Content-Type': 'application/json',
+              'User-Agent': 'FindOrigin-Bot/1.0',
+            },
+            body: JSON.stringify(requestBody),
+          });
 
-        if (!altResponse.ok) {
-          const altErrorText = await altResponse.text().catch(() => 'Unknown error');
-          throw new Error(`Yandex Cloud Search API v2 error: ${altResponse.status} - ${altErrorText}. Tried both ${currentAuthType} and ${altAuthType} formats.`);
-        }
+          console.log('[YANDEX_SEARCH] Alternative auth response status:', altResponse.status);
 
-        console.log(`[YANDEX_SEARCH] Success with ${altAuthType} format!`);
-        const altData = await altResponse.json();
-        
-        if (!altData.rawData) {
-          console.error('[YANDEX_SEARCH] No rawData in response:', altData);
-          return [];
+          if (!altResponse.ok) {
+            const altErrorText = await altResponse.text().catch(() => 'Unknown error');
+            console.error('[YANDEX_SEARCH] Alternative auth also failed:', altErrorText);
+            throw new Error(`Yandex Cloud Search API v2 error: ${altResponse.status} - ${altErrorText}. Tried both ${currentAuthType} and ${altAuthType} formats.`);
+          }
+
+          console.log(`[YANDEX_SEARCH] Success with ${altAuthType} format!`);
+          const altData = await altResponse.json();
+          
+          if (!altData.rawData) {
+            console.error('[YANDEX_SEARCH] No rawData in response:', altData);
+            return [];
+          }
+          
+          return parseYandexSearchResults(altData.rawData, maxResults);
+        } catch (altError: any) {
+          console.error('[YANDEX_SEARCH] Alternative auth format also failed:', altError?.message);
+          throw altError;
         }
-        
-        return parseYandexSearchResults(altData.rawData, maxResults);
       }
       
       throw new Error(`Yandex Cloud Search API v2 error: ${response.status} - ${errorText}`);
