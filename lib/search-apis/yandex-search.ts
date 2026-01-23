@@ -33,10 +33,14 @@ export async function searchWithYandex(
 
   try {
     // Yandex Cloud Search API v2 REST endpoint
-    // Пробуем стандартный endpoint для API v2
-    const endpoint = folderId 
+    // Пробуем разные варианты endpoint
+    // Вариант 1: с folderId в query параметрах
+    let endpoint = folderId 
       ? `https://search-api.cloud.yandex.net/v2/search?folderId=${folderId}`
       : 'https://search-api.cloud.yandex.net/v2/search';
+    
+    // Альтернативный вариант: folderId в заголовке или body
+    console.log('[YANDEX_SEARCH] Trying endpoint:', endpoint);
 
     console.log('[YANDEX_SEARCH] Using Yandex Cloud Search API v2');
     console.log('[YANDEX_SEARCH] Endpoint:', endpoint.replace(apiKey, '***'));
@@ -44,11 +48,17 @@ export async function searchWithYandex(
     console.log('[YANDEX_SEARCH] Folder ID:', folderId || 'not set');
 
     // Формируем запрос согласно документации API v2
-    const requestBody = {
+    // Пробуем разные форматы body
+    const requestBody: any = {
       query: query,
       pageSize: Math.min(maxResults, 50),
       pageNumber: 0,
     };
+    
+    // Если folderId не в URL, добавляем в body
+    if (!folderId) {
+      console.log('[YANDEX_SEARCH] Warning: folderId not provided');
+    }
 
     console.log('[YANDEX_SEARCH] Request body:', JSON.stringify(requestBody));
     console.log('[YANDEX_SEARCH] Sending fetch request...');
@@ -64,14 +74,27 @@ export async function searchWithYandex(
     let response;
     try {
       console.log('[YANDEX_SEARCH] Fetch call started at', new Date().toISOString());
+      // Пробуем разные форматы авторизации
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'FindOrigin-Bot/1.0',
+      };
+      
+      // Пробуем Bearer токен
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      
+      // Если folderId не в URL, пробуем добавить в заголовок
+      if (folderId) {
+        headers['x-folder-id'] = folderId;
+      }
+      
+      console.log('[YANDEX_SEARCH] Request headers (without auth):', { ...headers, Authorization: 'Bearer ***' });
+      console.log('[YANDEX_SEARCH] Full request URL:', endpoint);
+      
       response = await fetch(endpoint, {
         method: 'POST',
         signal: controller.signal,
-        headers: {
-          'Authorization': `Bearer ${apiKey}`, // IAM токен или API ключ
-          'Content-Type': 'application/json',
-          'User-Agent': 'FindOrigin-Bot/1.0',
-        },
+        headers,
         body: JSON.stringify(requestBody),
       });
       clearTimeout(timeoutId);
@@ -130,8 +153,20 @@ export async function searchWithYandex(
     console.log('[YANDEX_SEARCH] Received response from API v2');
     
     return parseYandexSearchResults(data, maxResults);
-  } catch (error) {
-    console.error('[YANDEX_SEARCH] Error searching with Yandex Cloud Search API v2:', error);
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error);
+    const errorName = error?.name || typeof error;
+    const errorStack = error?.stack || 'No stack';
+    
+    console.error('[YANDEX_SEARCH] Error searching with Yandex Cloud Search API v2');
+    console.error('[YANDEX_SEARCH] Error name:', errorName);
+    console.error('[YANDEX_SEARCH] Error message:', errorMessage);
+    console.error('[YANDEX_SEARCH] Error stack:', errorStack);
+    
+    if (error?.cause) {
+      console.error('[YANDEX_SEARCH] Error cause:', error.cause);
+    }
+    
     throw error;
   }
 }
