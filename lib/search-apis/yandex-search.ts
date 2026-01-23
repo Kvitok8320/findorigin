@@ -32,33 +32,44 @@ export async function searchWithYandex(
   const { apiKey, folderId, maxResults = 10 } = options;
 
   try {
-    // Yandex Cloud Search API v2 REST endpoint
-    // Пробуем разные варианты endpoint
-    // Вариант 1: с folderId в query параметрах
-    let endpoint = folderId 
-      ? `https://search-api.cloud.yandex.net/v2/search?folderId=${folderId}`
-      : 'https://search-api.cloud.yandex.net/v2/search';
-    
-    // Альтернативный вариант: folderId в заголовке или body
-    console.log('[YANDEX_SEARCH] Trying endpoint:', endpoint);
+    // Yandex Cloud Search API v2 REST endpoint (из документации)
+    const endpoint = 'https://searchapi.api.cloud.yandex.net/v2/web/search';
 
     console.log('[YANDEX_SEARCH] Using Yandex Cloud Search API v2');
-    console.log('[YANDEX_SEARCH] Endpoint:', endpoint.replace(apiKey, '***'));
+    console.log('[YANDEX_SEARCH] Endpoint:', endpoint);
     console.log('[YANDEX_SEARCH] Query:', query.substring(0, 50));
     console.log('[YANDEX_SEARCH] Folder ID:', folderId || 'not set');
 
-    // Формируем запрос согласно документации API v2
-    // Пробуем разные форматы body
-    const requestBody: any = {
-      query: query,
-      pageSize: Math.min(maxResults, 50),
-      pageNumber: 0,
-    };
-    
-    // Если folderId не в URL, добавляем в body
     if (!folderId) {
-      console.log('[YANDEX_SEARCH] Warning: folderId not provided');
+      throw new Error('YANDEX_FOLDER_ID is required for Yandex Cloud Search API v2');
     }
+
+    // Формируем запрос согласно документации API v2
+    // Документация: https://yandex.cloud/ru/docs/search-api/api-ref/rest/WebSearch/search
+    const requestBody = {
+      query: {
+        searchType: 'SEARCH_TYPE_RU', // Поиск по русскоязычному интернету
+        queryText: query, // Обязательное поле
+        familyMode: 'FAMILY_MODE_MODERATE', // Умеренная фильтрация
+        page: '0',
+        fixTypoMode: 'FIX_TYPO_MODE_ON', // Автоисправление опечаток
+      },
+      sortSpec: {
+        sortMode: 'SORT_MODE_BY_RELEVANCE', // Сортировка по релевантности
+        sortOrder: 'SORT_ORDER_DESC', // От новых к старым
+      },
+      groupSpec: {
+        groupMode: 'GROUP_MODE_DEEP', // Группировка по доменам
+        groupsOnPage: String(Math.min(maxResults, 100)), // Количество групп на странице
+        docsInGroup: '1', // Количество документов в группе
+      },
+      maxPassages: '3', // Максимальное количество пассажей для сниппета
+      region: '225', // Россия (код региона)
+      l10n: 'LOCALIZATION_RU', // Русский язык
+      folderId: folderId, // ID папки (обязательно)
+      responseFormat: 'FORMAT_XML', // Формат ответа: XML
+      userAgent: 'FindOrigin-Bot/1.0',
+    };
 
     console.log('[YANDEX_SEARCH] Request body:', JSON.stringify(requestBody));
     console.log('[YANDEX_SEARCH] Sending fetch request...');
@@ -74,19 +85,13 @@ export async function searchWithYandex(
     let response;
     try {
       console.log('[YANDEX_SEARCH] Fetch call started at', new Date().toISOString());
-      // Пробуем разные форматы авторизации
+      // Авторизация согласно документации Yandex Cloud
+      // Проверяем раздел "Аутентификация в API" для точного формата
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'User-Agent': 'FindOrigin-Bot/1.0',
+        'Authorization': `Bearer ${apiKey}`, // IAM токен или API ключ
       };
-      
-      // Пробуем Bearer токен
-      headers['Authorization'] = `Bearer ${apiKey}`;
-      
-      // Если folderId не в URL, пробуем добавить в заголовок
-      if (folderId) {
-        headers['x-folder-id'] = folderId;
-      }
       
       console.log('[YANDEX_SEARCH] Request headers (without auth):', { ...headers, Authorization: 'Bearer ***' });
       console.log('[YANDEX_SEARCH] Full request URL:', endpoint);
@@ -149,10 +154,20 @@ export async function searchWithYandex(
       throw new Error(`Yandex Cloud Search API v2 error: ${response.status} - ${errorText}`);
     }
 
+    // Ответ приходит в формате XML или HTML (в зависимости от responseFormat)
+    // В нашем случае FORMAT_XML, поэтому ответ будет XML строкой в поле rawData
     const data = await response.json();
     console.log('[YANDEX_SEARCH] Received response from API v2');
+    console.log('[YANDEX_SEARCH] Response has rawData:', !!data.rawData);
+    console.log('[YANDEX_SEARCH] rawData length:', data.rawData?.length || 0);
     
-    return parseYandexSearchResults(data, maxResults);
+    if (!data.rawData) {
+      console.error('[YANDEX_SEARCH] No rawData in response:', data);
+      return [];
+    }
+    
+    // rawData содержит XML строку, нужно распарсить
+    return parseYandexSearchResults(data.rawData, maxResults);
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
     const errorName = error?.name || typeof error;
@@ -173,26 +188,48 @@ export async function searchWithYandex(
 
 /**
  * Парсинг результатов поиска из Yandex Cloud Search API v2
+ * 
+ * rawData содержит XML строку в формате Яндекс.Поиска
  */
-function parseYandexSearchResults(data: any, maxResults: number): SearchResult[] {
+function parseYandexSearchResults(rawData: string, maxResults: number): SearchResult[] {
   const results: SearchResult[] = [];
 
-  // Пробуем разные форматы ответа API v2
-  const items = data.results || data.items || data.webPages?.value || [];
+  if (!rawData || typeof rawData !== 'string') {
+    console.error('[YANDEX_SEARCH] Invalid rawData format:', typeof rawData);
+    return [];
+  }
 
-  for (const item of items.slice(0, maxResults)) {
-    const url = item.url || item.link || item.uri || '';
-    const title = item.title || item.name || '';
-    const snippet = item.snippet || item.description || item.passage || '';
+  console.log('[YANDEX_SEARCH] Parsing XML response, length:', rawData.length);
 
-    if (url && title) {
-      results.push({
-        title,
-        url,
-        snippet,
-        sourceType: getSourceType(url),
-      });
+  // Парсим XML используя регулярные выражения
+  // Формат Яндекс.Поиска: <doc><url>...</url><title>...</title><passage>...</passage></doc>
+  const docMatches = rawData.match(/<doc>[\s\S]*?<\/doc>/g);
+  
+  if (docMatches) {
+    console.log('[YANDEX_SEARCH] Found', docMatches.length, 'documents in XML');
+    
+    for (const docXml of docMatches.slice(0, maxResults)) {
+      const urlMatch = docXml.match(/<url>([\s\S]*?)<\/url>/);
+      const titleMatch = docXml.match(/<title>([\s\S]*?)<\/title>/);
+      const passageMatch = docXml.match(/<passage>([\s\S]*?)<\/passage>/);
+
+      if (urlMatch && titleMatch) {
+        const url = urlMatch[1].trim();
+        const title = titleMatch[1].trim();
+        const snippet = passageMatch ? passageMatch[1].trim() : '';
+
+        results.push({
+          title,
+          url,
+          snippet,
+          sourceType: getSourceType(url),
+        });
+      }
     }
+  } else {
+    console.log('[YANDEX_SEARCH] No <doc> tags found in XML response');
+    // Пробуем альтернативный формат, если есть
+    console.log('[YANDEX_SEARCH] First 500 chars of rawData:', rawData.substring(0, 500));
   }
 
   console.log('[YANDEX_SEARCH] Parsed results:', results.length);
