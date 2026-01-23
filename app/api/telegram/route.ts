@@ -173,10 +173,9 @@ export async function POST(request: NextRequest) {
  * Асинхронная обработка update от Telegram
  */
 async function processUpdate(update: TelegramUpdate) {
-  try {
-    console.log('[PROCESS] Function called, starting update processing');
-    console.log('[PROCESS] Update ID:', update?.update_id);
-    console.log('[PROCESS] Update type:', update?.message ? 'message' : update?.callback_query ? 'callback_query' : 'unknown');
+  console.log('[PROCESS] Function called, starting update processing');
+  console.log('[PROCESS] Update ID:', update?.update_id);
+  console.log('[PROCESS] Update type:', update?.message ? 'message' : update?.callback_query ? 'callback_query' : 'unknown');
   
   try {
     console.log('[PROCESS] Parsing message...');
