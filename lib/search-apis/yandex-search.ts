@@ -223,7 +223,18 @@ export async function searchWithYandex(
             return [];
           }
           
-          return parseYandexSearchResults(altData.rawData, maxResults);
+          // Декодируем base64 если нужно
+          let altXmlData = altData.rawData;
+          try {
+            if (typeof altXmlData === 'string' && !altXmlData.trim().startsWith('<')) {
+              console.log('[YANDEX_SEARCH] Decoding base64 for alternative auth...');
+              altXmlData = Buffer.from(altXmlData, 'base64').toString('utf-8');
+            }
+          } catch (decodeError) {
+            console.warn('[YANDEX_SEARCH] Failed to decode base64 for alternative auth:', decodeError);
+          }
+          
+          return parseYandexSearchResults(altXmlData, maxResults);
         } catch (altError: any) {
           console.error('[YANDEX_SEARCH] Alternative auth format also failed:', altError?.message);
           throw altError;
@@ -235,6 +246,7 @@ export async function searchWithYandex(
 
     // Ответ приходит в формате XML или HTML (в зависимости от responseFormat)
     // В нашем случае FORMAT_XML, поэтому ответ будет XML строкой в поле rawData
+    // rawData может быть в base64, нужно декодировать
     const data = await response.json();
     console.log('[YANDEX_SEARCH] Received response from API v2');
     console.log('[YANDEX_SEARCH] Response has rawData:', !!data.rawData);
@@ -245,8 +257,24 @@ export async function searchWithYandex(
       return [];
     }
     
+    // rawData может быть в base64, декодируем если нужно
+    let xmlData = data.rawData;
+    try {
+      // Пробуем декодировать base64
+      // Если это base64, декодируем, иначе используем как есть
+      if (typeof xmlData === 'string' && !xmlData.trim().startsWith('<')) {
+        console.log('[YANDEX_SEARCH] rawData appears to be base64, decoding...');
+        xmlData = Buffer.from(xmlData, 'base64').toString('utf-8');
+        console.log('[YANDEX_SEARCH] Decoded XML length:', xmlData.length);
+        console.log('[YANDEX_SEARCH] First 200 chars of decoded XML:', xmlData.substring(0, 200));
+      }
+    } catch (decodeError) {
+      console.warn('[YANDEX_SEARCH] Failed to decode base64, using rawData as-is:', decodeError);
+      // Если декодирование не удалось, используем rawData как есть
+    }
+    
     // rawData содержит XML строку, нужно распарсить
-    return parseYandexSearchResults(data.rawData, maxResults);
+    return parseYandexSearchResults(xmlData, maxResults);
   } catch (error: any) {
     const errorMessage = error?.message || String(error);
     const errorName = error?.name || typeof error;
