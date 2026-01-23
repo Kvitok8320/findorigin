@@ -43,8 +43,22 @@ export async function searchWithYandex(
 
     console.log('[YANDEX_SEARCH] Using Yandex Cloud Search API v2');
     console.log('[YANDEX_SEARCH] Endpoint:', endpoint);
-    console.log('[YANDEX_SEARCH] Query:', query.substring(0, 50));
+    console.log('[YANDEX_SEARCH] Query length:', query.length);
+    console.log('[YANDEX_SEARCH] Query (first 100 chars):', query.substring(0, 100));
     console.log('[YANDEX_SEARCH] Folder ID:', folderId || 'not set');
+    
+    // Обрезаем запрос до разумной длины (первые 200 символов или до первого предложения)
+    let searchQuery = query.trim();
+    if (searchQuery.length > 200) {
+      // Пытаемся обрезать по предложению
+      const sentenceEnd = searchQuery.substring(0, 200).lastIndexOf('.');
+      if (sentenceEnd > 50) {
+        searchQuery = searchQuery.substring(0, sentenceEnd + 1);
+      } else {
+        searchQuery = searchQuery.substring(0, 200);
+      }
+      console.log('[YANDEX_SEARCH] Query truncated to:', searchQuery.length, 'chars');
+    }
 
     if (!folderId) {
       throw new Error('YANDEX_FOLDER_ID is required for Yandex Cloud Search API v2');
@@ -55,7 +69,7 @@ export async function searchWithYandex(
     const requestBody = {
       query: {
         searchType: 'SEARCH_TYPE_RU', // Поиск по русскоязычному интернету
-        queryText: query, // Обязательное поле
+        queryText: searchQuery, // Обязательное поле (используем обрезанный запрос)
         familyMode: 'FAMILY_MODE_MODERATE', // Умеренная фильтрация
         page: '0',
         fixTypoMode: 'FIX_TYPO_MODE_ON', // Автоисправление опечаток
@@ -113,6 +127,8 @@ export async function searchWithYandex(
       console.log('[YANDEX_SEARCH] Auth type:', authType);
       console.log('[YANDEX_SEARCH] Request headers (without auth):', { ...headers, Authorization: `${authType} ***` });
       console.log('[YANDEX_SEARCH] Full request URL:', endpoint);
+      console.log('[YANDEX_SEARCH] Request body size:', JSON.stringify(requestBody).length, 'bytes');
+      console.log('[YANDEX_SEARCH] About to call fetch...');
       
       response = await fetch(endpoint, {
         method: 'POST',
@@ -122,6 +138,7 @@ export async function searchWithYandex(
       });
       clearTimeout(timeoutId);
       console.log('[YANDEX_SEARCH] Fetch call completed at', new Date().toISOString());
+      console.log('[YANDEX_SEARCH] Response received, status:', response.status);
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       const fetchDuration = Date.now() - fetchStartTime;
