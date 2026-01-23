@@ -160,10 +160,15 @@ export async function searchWithYandex(
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('[YANDEX_SEARCH] Error response:', errorText);
+      console.error('[YANDEX_SEARCH] Error response status:', response.status);
+      console.error('[YANDEX_SEARCH] Error response text:', errorText);
       
-      // Если 401/403, возможно нужен другой формат авторизации
+      // Если 401/403, возможно нужен другой формат авторизации или неправильная роль
       if (response.status === 401 || response.status === 403) {
+        console.error('[YANDEX_SEARCH] Authorization error! Possible causes:');
+        console.error('[YANDEX_SEARCH] 1. Wrong auth format (Api-Key vs Bearer)');
+        console.error('[YANDEX_SEARCH] 2. Missing or incorrect role: search-api.webSearch.user');
+        console.error('[YANDEX_SEARCH] 3. Role assigned to wrong resource (should be on folder)');
         const currentAuthType = process.env.YANDEX_AUTH_TYPE || 'Api-Key';
         const altAuthType = currentAuthType === 'Bearer' ? 'Api-Key' : 'Bearer';
         const altAuthHeader = altAuthType === 'Bearer' 
