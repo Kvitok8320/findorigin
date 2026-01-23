@@ -103,12 +103,12 @@ export async function searchWithYandex(
     console.log('[YANDEX_SEARCH] Sending fetch request...');
     const fetchStartTime = Date.now();
 
-    // Добавляем таймаут для fetch запроса (15 секунд)
+    // Добавляем таймаут для fetch запроса (30 секунд для Vercel)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error('[YANDEX_SEARCH] Fetch timeout after 15 seconds');
+      console.error('[YANDEX_SEARCH] Fetch timeout after 30 seconds');
       controller.abort();
-    }, 15000);
+    }, 30000);
 
     let response;
     try {
@@ -137,7 +137,7 @@ export async function searchWithYandex(
       console.log('[YANDEX_SEARCH] Full request URL:', endpoint);
       console.log('[YANDEX_SEARCH] Request body size:', JSON.stringify(requestBody).length, 'bytes');
       console.log('[YANDEX_SEARCH] About to call fetch...');
-      console.log('[YANDEX_SEARCH] Timeout set for 15 seconds');
+      console.log('[YANDEX_SEARCH] Timeout set for 30 seconds');
       
       try {
         console.log('[YANDEX_SEARCH] Starting fetch call...');
