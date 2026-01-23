@@ -1,28 +1,28 @@
 /**
- * Интеграция с API Яндекс.Поиска для сайта
- * Документация: https://yandex.ru/dev/site/api/
+ * Интеграция с Yandex Cloud Search API v2
+ * Документация: https://yandex.cloud/en/services/search-api
  * 
- * ВАЖНО: Используется "API Яндекс.Поиска для сайта" из Кабинета разработчика.
- * Это НЕ Yandex Cloud Search API.
+ * ВАЖНО: Это API для поиска по ВСЕМУ ИНТЕРНЕТУ, а не по конкретному сайту.
  * 
- * Для получения ключа:
- * 1. Перейдите на https://developer.tech.yandex.ru
- * 2. Создайте ключ для "API Яндекс.Поиска для сайта"
- * 3. Подключите ключ к поиску на https://site.yandex.ru/searches/
+ * Требует:
+ * 1. Регистрацию в Yandex Cloud: https://console.cloud.yandex.ru
+ * 2. Создание сервисного аккаунта
+ * 3. Получение IAM токена или API ключа
+ * 4. Назначение роли "ml.search-api.user" или "viewer"
  */
 
 import { SearchResult, getSourceType } from '../source-searcher';
 
 export interface YandexSearchOptions {
-  apiKey: string;
-  folderId?: string; // ID папки в Yandex Cloud (опционально)
+  apiKey: string; // IAM токен или API ключ из Yandex Cloud
+  folderId?: string; // ID папки в Yandex Cloud
   maxResults?: number;
 }
 
 /**
- * Поиск через Yandex Cloud Search API
+ * Поиск через Yandex Cloud Search API v2
  * 
- * Использует новый API через Yandex Cloud gateway
+ * Использует REST API v2 для поиска по всему интернету
  * Документация: https://yandex.cloud/en/services/search-api
  */
 export async function searchWithYandex(
@@ -32,98 +32,97 @@ export async function searchWithYandex(
   const { apiKey, folderId, maxResults = 10 } = options;
 
   try {
-    // Yandex Cloud Search API endpoint
-    // Пробуем использовать новый endpoint через Yandex Cloud
-    const url = new URL('https://yandex.ru/search/xml');
-    
-    // Пробуем новый формат авторизации через Yandex Cloud
-    // Если у нас есть folderId, используем его
-    if (folderId) {
-      url.searchParams.set('folderId', folderId);
-    }
-    
-    // Используем API ключ как IAM токен
-    url.searchParams.set('key', apiKey);
-    url.searchParams.set('query', query);
-    url.searchParams.set('page', '0');
-    url.searchParams.set('groupby', `attr=d.mode=deep.groups-on-page=${Math.min(maxResults, 100)}`);
+    // Yandex Cloud Search API v2 REST endpoint
+    // Пробуем стандартный endpoint для API v2
+    const endpoint = folderId 
+      ? `https://search-api.cloud.yandex.net/v2/search?folderId=${folderId}`
+      : 'https://search-api.cloud.yandex.net/v2/search';
 
-    console.log('[YANDEX_SEARCH] Sending request to Yandex Cloud Search API...');
-    console.log('[YANDEX_SEARCH] Using key:', apiKey.substring(0, 10) + '...');
+    console.log('[YANDEX_SEARCH] Using Yandex Cloud Search API v2');
+    console.log('[YANDEX_SEARCH] Endpoint:', endpoint.replace(apiKey, '***'));
 
-    const response = await fetch(url.toString(), {
+    // Формируем запрос согласно документации API v2
+    const requestBody = {
+      query: query,
+      pageSize: Math.min(maxResults, 50),
+      pageNumber: 0,
+    };
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
       headers: {
+        'Authorization': `Bearer ${apiKey}`, // IAM токен или API ключ
+        'Content-Type': 'application/json',
         'User-Agent': 'FindOrigin-Bot/1.0',
-        'Accept': 'application/xml, text/xml, application/json',
-        'Authorization': `Api-Key ${apiKey}`, // Пробуем новый формат авторизации
       },
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       console.error('[YANDEX_SEARCH] Error response:', errorText);
       
-      // Если ошибка про старый API, пробуем альтернативный подход
-      if (errorText.includes('old authorization type') || errorText.includes('Yandex Cloud gateway')) {
-        console.log('[YANDEX_SEARCH] Old API format detected, trying alternative approach...');
+      // Если 401/403, возможно нужен другой формат авторизации
+      if (response.status === 401 || response.status === 403) {
+        console.log('[YANDEX_SEARCH] Auth error, trying alternative format...');
         
-        // Альтернативный подход: используем публичный API Яндекс.Поиска
-        // через веб-интерфейс (требует другой метод)
-        throw new Error('Yandex Cloud Search API requires Yandex Cloud setup. Please configure Yandex Cloud Search API in Yandex Cloud Console.');
-      }
-      
-      throw new Error(`Yandex Search API error: ${response.status} - ${errorText}`);
-    }
+        // Пробуем альтернативный формат авторизации
+        const altResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Api-Key ${apiKey}`, // Альтернативный формат
+            'Content-Type': 'application/json',
+            'User-Agent': 'FindOrigin-Bot/1.0',
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-    const responseText = await response.text();
-    console.log('[YANDEX_SEARCH] Received response, length:', responseText.length);
-
-    // Пробуем парсить как JSON (новый формат)
-    let results: SearchResult[] = [];
-    
-    try {
-      const jsonData = JSON.parse(responseText);
-      if (jsonData.results && Array.isArray(jsonData.results)) {
-        results = jsonData.results.slice(0, maxResults).map((item: any) => ({
-          title: item.title || item.name || '',
-          url: item.url || item.link || '',
-          snippet: item.snippet || item.description || '',
-          sourceType: getSourceType(item.url || item.link || ''),
-        }));
-      }
-    } catch (jsonError) {
-      // Если не JSON, пробуем XML
-      console.log('[YANDEX_SEARCH] Response is not JSON, trying XML parsing...');
-      
-      // Парсим XML используя регулярные выражения
-      const docMatches = responseText.match(/<doc>[\s\S]*?<\/doc>/g);
-      
-      if (docMatches) {
-        for (const docXml of docMatches.slice(0, maxResults)) {
-          const urlMatch = docXml.match(/<url>([\s\S]*?)<\/url>/);
-          const titleMatch = docXml.match(/<title>([\s\S]*?)<\/title>/);
-          const passageMatch = docXml.match(/<passage>([\s\S]*?)<\/passage>/);
-
-          if (urlMatch && titleMatch) {
-            const url = urlMatch[1].trim();
-            const title = titleMatch[1].trim();
-            const snippet = passageMatch ? passageMatch[1].trim() : '';
-
-            results.push({
-              title,
-              url,
-              snippet,
-              sourceType: getSourceType(url),
-            });
-          }
+        if (!altResponse.ok) {
+          const altErrorText = await altResponse.text().catch(() => 'Unknown error');
+          throw new Error(`Yandex Cloud Search API v2 error: ${altResponse.status} - ${altErrorText}`);
         }
+
+        const altData = await altResponse.json();
+        return parseYandexSearchResults(altData, maxResults);
       }
+      
+      throw new Error(`Yandex Cloud Search API v2 error: ${response.status} - ${errorText}`);
     }
 
-    console.log('[YANDEX_SEARCH] Parsed results:', results.length);
-    return results;
+    const data = await response.json();
+    console.log('[YANDEX_SEARCH] Received response from API v2');
+    
+    return parseYandexSearchResults(data, maxResults);
   } catch (error) {
-    console.error('[YANDEX_SEARCH] Error searching with Yandex:', error);
+    console.error('[YANDEX_SEARCH] Error searching with Yandex Cloud Search API v2:', error);
     throw error;
   }
+}
+
+/**
+ * Парсинг результатов поиска из Yandex Cloud Search API v2
+ */
+function parseYandexSearchResults(data: any, maxResults: number): SearchResult[] {
+  const results: SearchResult[] = [];
+
+  // Пробуем разные форматы ответа API v2
+  const items = data.results || data.items || data.webPages?.value || [];
+
+  for (const item of items.slice(0, maxResults)) {
+    const url = item.url || item.link || item.uri || '';
+    const title = item.title || item.name || '';
+    const snippet = item.snippet || item.description || item.passage || '';
+
+    if (url && title) {
+      results.push({
+        title,
+        url,
+        snippet,
+        sourceType: getSourceType(url),
+      });
+    }
+  }
+
+  console.log('[YANDEX_SEARCH] Parsed results:', results.length);
+  return results;
 }
