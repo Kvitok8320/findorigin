@@ -114,8 +114,20 @@
    1. ✅ `GOOGLE_API_KEY` - API ключ из Google Cloud Console (сохранен в .env)
    2. ✅ `GOOGLE_SEARCH_ENGINE_ID` - Search Engine ID из cse.google.com (52fb00e8fe74e4451, сохранен в .env)
 
-6.1.2. Bing Search API (альтернатива Google)
-1. Регистрация/вход в Azure Portal (https://poripital.azure.com)
+6.1.2. Яндекс.Поиск API (рекомендуется для РФ, не требует карту)
+1. Регистрация в Кабинете разработчика Яндекса (https://developer.tech.yandex.ru)
+2. Создание API ключа:
+   1. Нажатие "Получить ключ" или "Создать ключ"
+   2. Заполнение формы:
+      1. Ввод имени ключа (например, "FindOrigin Bot")
+      2. Выбор сервиса: "API Яндекс.Поиска для сайта"
+      3. Согласие с условиями использования
+   3. Копирование полученного API ключа
+3. Сохранение ключа:
+   1. `YANDEX_API_KEY` - API ключ из Кабинета разработчика Яндекса
+
+6.1.3. Bing Search API (альтернатива Google, требует карту)
+1. ✅ Регистрация/вход в Azure Portal (https://portal.azure.com)
 2. Создание ресурса Bing Search:
    1. Поиск "Bing Search v7" в Azure Marketplace
    2. Нажатие "Create"
@@ -132,7 +144,7 @@
 4. Сохранение ключа:
    1. `BING_API_KEY` - API ключ из Azure Portal
 
-6.1.3. SerpAPI (альтернативный вариант)
+6.1.4. SerpAPI (альтернативный вариант)
 1. Регистрация на https://serpapi.com
 2. Создание аккаунта (бесплатный тариф: 100 запросов/месяц)
 3. Получение API ключа:

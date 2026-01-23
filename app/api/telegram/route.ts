@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
       
       // Проверяем, настроен ли поисковый API
       const hasSearchAPI = !!(
+        process.env.YANDEX_API_KEY ||
         process.env.GOOGLE_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID ||
         process.env.BING_API_KEY ||
         process.env.SERPAPI_KEY
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
           chatId,
           '❌ Не удалось найти источники. Возможно, требуется настройка поискового API.\n\n' +
           'Для работы функции поиска необходимо настроить один из следующих сервисов:\n' +
+          '- Яндекс.Поиск API (рекомендуется для РФ, не требует карту)\n' +
           '- Google Custom Search API\n' +
           '- Bing Search API\n' +
           '- SerpAPI\n' +
@@ -226,6 +228,7 @@ async function processUpdate(update: TelegramUpdate) {
     if (searchResults.length === 0) {
       // Проверяем, было ли уже отправлено сообщение об ошибке синхронно
       const hasSearchAPI = !!(
+        process.env.YANDEX_API_KEY ||
         process.env.GOOGLE_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID ||
         process.env.BING_API_KEY ||
         process.env.SERPAPI_KEY

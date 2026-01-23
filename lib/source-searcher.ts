@@ -80,6 +80,7 @@ export function filterBySourceType(
  * Поиск источников через поисковую систему
  * 
  * Поддерживает несколько поисковых API:
+ * - Яндекс.Поиск API (рекомендуется для РФ)
  * - Google Custom Search API
  * - Bing Search API
  * - SerpAPI
@@ -129,18 +130,40 @@ export async function searchSources(
     });
   }
 
+  // Попытка использовать Яндекс.Поиск API (приоритет для РФ)
+  const yandexApiKey = process.env.YANDEX_API_KEY;
+  
+  if (yandexApiKey) {
+    try {
+      console.log('[SEARCH] Attempting Yandex search...');
+      const { searchWithYandex } = await import('./search-apis/yandex-search');
+      const results = await searchWithYandex(query, {
+        apiKey: yandexApiKey,
+        maxResults,
+      });
+      console.log('[SEARCH] Yandex search completed successfully');
+      return results;
+    } catch (error: any) {
+      console.error('[SEARCH] Yandex Search API error:', error?.message || error);
+      // Продолжаем попытки с другими API
+    }
+  }
+
   // Попытка использовать Bing Search API
   const bingApiKey = process.env.BING_API_KEY;
   
   if (bingApiKey) {
     try {
+      console.log('[SEARCH] Attempting Bing search...');
       const { searchWithBing } = await import('./search-apis/bing-search');
-      return await searchWithBing(query, {
+      const results = await searchWithBing(query, {
         apiKey: bingApiKey,
         maxResults,
       });
-    } catch (error) {
-      console.error('Bing Search API error:', error);
+      console.log('[SEARCH] Bing search completed successfully');
+      return results;
+    } catch (error: any) {
+      console.error('[SEARCH] Bing Search API error:', error?.message || error);
       // Продолжаем попытки с другими API
     }
   }
