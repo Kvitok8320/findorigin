@@ -1,14 +1,14 @@
 /**
- * Интеграция с Яндекс.Поиск API через Yandex Cloud
- * Документация: https://yandex.cloud/en/services/search-api
+ * Интеграция с API Яндекс.Поиска для сайта
+ * Документация: https://yandex.ru/dev/site/api/
  * 
- * ВАЖНО: Старый XML API (yandex.ru/search/xml) больше не работает.
- * Нужно использовать Yandex Cloud Search API.
+ * ВАЖНО: Используется "API Яндекс.Поиска для сайта" из Кабинета разработчика.
+ * Это НЕ Yandex Cloud Search API.
  * 
- * Для настройки:
- * 1. Зарегистрируйтесь в Yandex Cloud: https://console.cloud.yandex.ru
- * 2. Создайте сервисный аккаунт
- * 3. Получите IAM токен или используйте API ключ из Yandex Cloud
+ * Для получения ключа:
+ * 1. Перейдите на https://developer.tech.yandex.ru
+ * 2. Создайте ключ для "API Яндекс.Поиска для сайта"
+ * 3. Подключите ключ к поиску на https://site.yandex.ru/searches/
  */
 
 import { SearchResult, getSourceType } from '../source-searcher';
