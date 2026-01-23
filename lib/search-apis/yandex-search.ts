@@ -138,15 +138,21 @@ export async function searchWithYandex(
       console.log('[YANDEX_SEARCH] Request body size:', JSON.stringify(requestBody).length, 'bytes');
       console.log('[YANDEX_SEARCH] About to call fetch...');
       console.log('[YANDEX_SEARCH] Timeout set for 30 seconds');
+      console.log('[YANDEX_SEARCH] Creating fetch promise...');
       
       try {
+        console.log('[YANDEX_SEARCH] Fetch promise created, awaiting response...');
         console.log('[YANDEX_SEARCH] Starting fetch call...');
-        response = await fetch(endpoint, {
+        const fetchPromise = fetch(endpoint, {
           method: 'POST',
           signal: controller.signal,
           headers,
           body: JSON.stringify(requestBody),
         });
+        console.log('[YANDEX_SEARCH] Fetch promise created, waiting for response...');
+        console.log('[YANDEX_SEARCH] Current time:', new Date().toISOString());
+        
+        response = await fetchPromise;
         console.log('[YANDEX_SEARCH] Fetch promise resolved');
         clearTimeout(timeoutId);
         console.log('[YANDEX_SEARCH] Fetch call completed at', new Date().toISOString());
