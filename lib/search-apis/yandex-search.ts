@@ -321,22 +321,26 @@ function parseYandexSearchResults(rawData: string, maxResults: number): SearchRe
   // 3. Прямо в <response>
   
   // Сначала пробуем найти <doc> теги (могут быть внутри <group> или напрямую)
-  let docMatches: RegExpMatchArray | null = rawData.match(/<doc>[\s\S]*?<\/doc>/g);
+  // Теги <doc> могут иметь атрибуты: <doc id="..." touchdown="...">
+  // Используем более гибкое регулярное выражение, которое учитывает атрибуты
+  let docMatches: RegExpMatchArray | null = rawData.match(/<doc[^>]*>[\s\S]*?<\/doc>/g);
   
   // Если не нашли, пробуем найти внутри <group>
-  if (!docMatches) {
+  if (!docMatches || docMatches.length === 0) {
     const groupMatches = rawData.match(/<group>[\s\S]*?<\/group>/g);
     if (groupMatches) {
       console.log('[YANDEX_SEARCH] Found', groupMatches.length, 'groups, extracting docs from groups...');
       const allDocs: string[] = [];
       for (const groupXml of groupMatches) {
-        const groupDocMatches = groupXml.match(/<doc>[\s\S]*?<\/doc>/g);
+        // Ищем <doc> с атрибутами внутри группы
+        const groupDocMatches = groupXml.match(/<doc[^>]*>[\s\S]*?<\/doc>/g);
         if (groupDocMatches) {
           allDocs.push(...groupDocMatches);
         }
       }
       if (allDocs.length > 0) {
         docMatches = allDocs as RegExpMatchArray;
+        console.log('[YANDEX_SEARCH] Extracted', docMatches.length, 'documents from groups');
       }
     }
   }
