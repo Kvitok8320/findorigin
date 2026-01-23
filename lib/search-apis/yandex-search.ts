@@ -40,6 +40,8 @@ export async function searchWithYandex(
 
     console.log('[YANDEX_SEARCH] Using Yandex Cloud Search API v2');
     console.log('[YANDEX_SEARCH] Endpoint:', endpoint.replace(apiKey, '***'));
+    console.log('[YANDEX_SEARCH] Query:', query.substring(0, 50));
+    console.log('[YANDEX_SEARCH] Folder ID:', folderId || 'not set');
 
     // Формируем запрос согласно документации API v2
     const requestBody = {
@@ -48,15 +50,50 @@ export async function searchWithYandex(
       pageNumber: 0,
     };
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`, // IAM токен или API ключ
-        'Content-Type': 'application/json',
-        'User-Agent': 'FindOrigin-Bot/1.0',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    console.log('[YANDEX_SEARCH] Request body:', JSON.stringify(requestBody));
+    console.log('[YANDEX_SEARCH] Sending fetch request...');
+    const fetchStartTime = Date.now();
+
+    // Добавляем таймаут для fetch запроса (15 секунд)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[YANDEX_SEARCH] Fetch timeout after 15 seconds');
+      controller.abort();
+    }, 15000);
+
+    let response;
+    try {
+      console.log('[YANDEX_SEARCH] Fetch call started at', new Date().toISOString());
+      response = await fetch(endpoint, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Authorization': `Bearer ${apiKey}`, // IAM токен или API ключ
+          'Content-Type': 'application/json',
+          'User-Agent': 'FindOrigin-Bot/1.0',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      clearTimeout(timeoutId);
+      console.log('[YANDEX_SEARCH] Fetch call completed at', new Date().toISOString());
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.error('[YANDEX_SEARCH] Fetch failed after', fetchDuration, 'ms');
+      console.error('[YANDEX_SEARCH] Fetch error name:', fetchError?.name);
+      console.error('[YANDEX_SEARCH] Fetch error message:', fetchError?.message);
+      console.error('[YANDEX_SEARCH] Fetch error code:', fetchError?.code);
+      if (fetchError?.cause) {
+        console.error('[YANDEX_SEARCH] Fetch error cause:', fetchError.cause);
+      }
+      throw new Error(`Yandex Cloud Search API v2 fetch error: ${fetchError?.message || 'Unknown error'}`);
+    }
+
+    const fetchDuration = Date.now() - fetchStartTime;
+    console.log('[YANDEX_SEARCH] Fetch completed in', fetchDuration, 'ms');
+    console.log('[YANDEX_SEARCH] Response status:', response.status);
+    console.log('[YANDEX_SEARCH] Response ok:', response.ok);
+    console.log('[YANDEX_SEARCH] Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
