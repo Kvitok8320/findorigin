@@ -8,7 +8,13 @@
  * 1. Регистрацию в Yandex Cloud: https://console.cloud.yandex.ru
  * 2. Создание сервисного аккаунта
  * 3. Получение IAM токена или API ключа
- * 4. Назначение роли "ml.search-api.user" или "viewer"
+ * 4. Назначение роли "search-api.webSearch.user" на каталог (обязательно!)
+ * 
+ * Авторизация:
+ * - IAM токен: Authorization: Bearer <IAM-токен>
+ * - API ключ: Authorization: Api-Key <API-ключ>
+ * 
+ * По умолчанию используется формат Api-Key. Можно указать YANDEX_AUTH_TYPE=Bearer для IAM токенов.
  */
 
 import { SearchResult, getSourceType } from '../source-searcher';
@@ -85,15 +91,27 @@ export async function searchWithYandex(
     let response;
     try {
       console.log('[YANDEX_SEARCH] Fetch call started at', new Date().toISOString());
+      
       // Авторизация согласно документации Yandex Cloud
-      // Проверяем раздел "Аутентификация в API" для точного формата
+      // Два формата:
+      // 1. Authorization: Bearer <IAM-токен> - для IAM токенов
+      // 2. Authorization: Api-Key <API-ключ> - для API ключей
+      // 
+      // Пробуем сначала Api-Key (так как пользователь создал API ключ),
+      // если не сработает, попробуем Bearer
+      const authType = process.env.YANDEX_AUTH_TYPE || 'Api-Key'; // По умолчанию Api-Key
+      const authHeader = authType === 'Bearer' 
+        ? `Bearer ${apiKey}` 
+        : `Api-Key ${apiKey}`;
+      
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'User-Agent': 'FindOrigin-Bot/1.0',
-        'Authorization': `Bearer ${apiKey}`, // IAM токен или API ключ
+        'Authorization': authHeader,
       };
       
-      console.log('[YANDEX_SEARCH] Request headers (without auth):', { ...headers, Authorization: 'Bearer ***' });
+      console.log('[YANDEX_SEARCH] Auth type:', authType);
+      console.log('[YANDEX_SEARCH] Request headers (without auth):', { ...headers, Authorization: `${authType} ***` });
       console.log('[YANDEX_SEARCH] Full request URL:', endpoint);
       
       response = await fetch(endpoint, {
@@ -129,13 +147,19 @@ export async function searchWithYandex(
       
       // Если 401/403, возможно нужен другой формат авторизации
       if (response.status === 401 || response.status === 403) {
-        console.log('[YANDEX_SEARCH] Auth error, trying alternative format...');
+        const currentAuthType = process.env.YANDEX_AUTH_TYPE || 'Api-Key';
+        const altAuthType = currentAuthType === 'Bearer' ? 'Api-Key' : 'Bearer';
+        const altAuthHeader = altAuthType === 'Bearer' 
+          ? `Bearer ${apiKey}` 
+          : `Api-Key ${apiKey}`;
+        
+        console.log(`[YANDEX_SEARCH] Auth error with ${currentAuthType}, trying ${altAuthType} format...`);
         
         // Пробуем альтернативный формат авторизации
         const altResponse = await fetch(endpoint, {
           method: 'POST',
           headers: {
-            'Authorization': `Api-Key ${apiKey}`, // Альтернативный формат
+            'Authorization': altAuthHeader,
             'Content-Type': 'application/json',
             'User-Agent': 'FindOrigin-Bot/1.0',
           },
@@ -144,11 +168,18 @@ export async function searchWithYandex(
 
         if (!altResponse.ok) {
           const altErrorText = await altResponse.text().catch(() => 'Unknown error');
-          throw new Error(`Yandex Cloud Search API v2 error: ${altResponse.status} - ${altErrorText}`);
+          throw new Error(`Yandex Cloud Search API v2 error: ${altResponse.status} - ${altErrorText}. Tried both ${currentAuthType} and ${altAuthType} formats.`);
         }
 
+        console.log(`[YANDEX_SEARCH] Success with ${altAuthType} format!`);
         const altData = await altResponse.json();
-        return parseYandexSearchResults(altData, maxResults);
+        
+        if (!altData.rawData) {
+          console.error('[YANDEX_SEARCH] No rawData in response:', altData);
+          return [];
+        }
+        
+        return parseYandexSearchResults(altData.rawData, maxResults);
       }
       
       throw new Error(`Yandex Cloud Search API v2 error: ${response.status} - ${errorText}`);

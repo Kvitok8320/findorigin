@@ -46,7 +46,9 @@
 1. В сервисном аккаунте перейдите в **"Права доступа"**
 2. Нажмите **"Назначить роли"**
 3. Выберите папку: `default` (b1govdno0cleroqm4huf)
-4. Добавьте роль: **"ml.search-api.user"** или **"viewer"**
+4. Добавьте роль: **"search-api.webSearch.user"** (обязательно!)
+   - Это роль для работы с Web Search API
+   - Должна быть назначена на каталог (folder), в котором создан сервисный аккаунт
 5. Сохраните
 
 ### Шаг 6: Получите Folder ID
@@ -69,8 +71,12 @@
 ## Endpoint для API v2
 
 Согласно документации, API v2 использует:
-- **REST**: `https://search-api.cloud.yandex.net/v2/search`
-- **gRPC**: через специальный endpoint
+- **REST**: `POST https://searchapi.api.cloud.yandex.net/v2/web/search`
+- **Авторизация**: 
+  - `Authorization: Bearer <IAM-токен>` (для IAM токенов)
+  - `Authorization: Api-Key <API-ключ>` (для API ключей, рекомендуется)
+- **Роль**: `search-api.webSearch.user` (обязательно! Назначается на каталог)
+- **folderId**: Должен быть в теле запроса (обязательно!)
 
 ## Документация
 
