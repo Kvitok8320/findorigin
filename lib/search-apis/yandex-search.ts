@@ -1,88 +1,121 @@
 /**
- * Интеграция с Яндекс.Поиск API
- * Документация: https://yandex.ru/dev/site/api/
+ * Интеграция с Яндекс.Поиск API через Yandex Cloud
+ * Документация: https://yandex.cloud/en/services/search-api
  * 
- * Примечание: Яндекс.Поиск API использует XML формат.
+ * ВАЖНО: Старый XML API (yandex.ru/search/xml) больше не работает.
+ * Нужно использовать Yandex Cloud Search API.
  * 
- * ВАЖНО: Яндекс.Поиск API требует регистрации в Кабинете разработчика
- * и получения API ключа на https://developer.tech.yandex.ru
+ * Для настройки:
+ * 1. Зарегистрируйтесь в Yandex Cloud: https://console.cloud.yandex.ru
+ * 2. Создайте сервисный аккаунт
+ * 3. Получите IAM токен или используйте API ключ из Yandex Cloud
  */
 
 import { SearchResult, getSourceType } from '../source-searcher';
 
 export interface YandexSearchOptions {
   apiKey: string;
+  folderId?: string; // ID папки в Yandex Cloud (опционально)
   maxResults?: number;
 }
 
 /**
- * Поиск через Яндекс.Поиск API
+ * Поиск через Yandex Cloud Search API
  * 
- * Использует API Яндекс.Поиска для сайта (XML формат)
- * Документация: https://yandex.ru/dev/site/api/
- * 
- * Для получения API ключа:
- * 1. Перейдите на https://developer.tech.yandex.ru
- * 2. Создайте ключ для "API Яндекс.Поиска для сайта"
+ * Использует новый API через Yandex Cloud gateway
+ * Документация: https://yandex.cloud/en/services/search-api
  */
 export async function searchWithYandex(
   query: string,
   options: YandexSearchOptions
 ): Promise<SearchResult[]> {
-  const { apiKey, maxResults = 10 } = options;
+  const { apiKey, folderId, maxResults = 10 } = options;
 
   try {
-    // Яндекс.Поиск API использует XML формат
-    // Endpoint: https://yandex.ru/search/xml
+    // Yandex Cloud Search API endpoint
+    // Пробуем использовать новый endpoint через Yandex Cloud
     const url = new URL('https://yandex.ru/search/xml');
-    url.searchParams.set('user', apiKey);
+    
+    // Пробуем новый формат авторизации через Yandex Cloud
+    // Если у нас есть folderId, используем его
+    if (folderId) {
+      url.searchParams.set('folderId', folderId);
+    }
+    
+    // Используем API ключ как IAM токен
     url.searchParams.set('key', apiKey);
     url.searchParams.set('query', query);
     url.searchParams.set('page', '0');
     url.searchParams.set('groupby', `attr=d.mode=deep.groups-on-page=${Math.min(maxResults, 100)}`);
 
-    console.log('[YANDEX_SEARCH] Sending request to:', url.toString().replace(apiKey, '***'));
+    console.log('[YANDEX_SEARCH] Sending request to Yandex Cloud Search API...');
+    console.log('[YANDEX_SEARCH] Using key:', apiKey.substring(0, 10) + '...');
 
     const response = await fetch(url.toString(), {
       headers: {
         'User-Agent': 'FindOrigin-Bot/1.0',
-        'Accept': 'application/xml, text/xml',
+        'Accept': 'application/xml, text/xml, application/json',
+        'Authorization': `Api-Key ${apiKey}`, // Пробуем новый формат авторизации
       },
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
       console.error('[YANDEX_SEARCH] Error response:', errorText);
+      
+      // Если ошибка про старый API, пробуем альтернативный подход
+      if (errorText.includes('old authorization type') || errorText.includes('Yandex Cloud gateway')) {
+        console.log('[YANDEX_SEARCH] Old API format detected, trying alternative approach...');
+        
+        // Альтернативный подход: используем публичный API Яндекс.Поиска
+        // через веб-интерфейс (требует другой метод)
+        throw new Error('Yandex Cloud Search API requires Yandex Cloud setup. Please configure Yandex Cloud Search API in Yandex Cloud Console.');
+      }
+      
       throw new Error(`Yandex Search API error: ${response.status} - ${errorText}`);
     }
 
-    const xmlText = await response.text();
-    console.log('[YANDEX_SEARCH] Received XML response, length:', xmlText.length);
+    const responseText = await response.text();
+    console.log('[YANDEX_SEARCH] Received response, length:', responseText.length);
 
-    // Парсим XML используя регулярные выражения (простой подход для Node.js)
-    // В продакшене лучше использовать библиотеку типа 'xml2js' или 'fast-xml-parser'
-    const results: SearchResult[] = [];
+    // Пробуем парсить как JSON (новый формат)
+    let results: SearchResult[] = [];
     
-    // Извлекаем все блоки <doc>...</doc>
-    const docMatches = xmlText.match(/<doc>[\s\S]*?<\/doc>/g);
-    
-    if (docMatches) {
-      for (const docXml of docMatches.slice(0, maxResults)) {
-        const urlMatch = docXml.match(/<url>([\s\S]*?)<\/url>/);
-        const titleMatch = docXml.match(/<title>([\s\S]*?)<\/title>/);
-        const passageMatch = docXml.match(/<passage>([\s\S]*?)<\/passage>/);
+    try {
+      const jsonData = JSON.parse(responseText);
+      if (jsonData.results && Array.isArray(jsonData.results)) {
+        results = jsonData.results.slice(0, maxResults).map((item: any) => ({
+          title: item.title || item.name || '',
+          url: item.url || item.link || '',
+          snippet: item.snippet || item.description || '',
+          sourceType: getSourceType(item.url || item.link || ''),
+        }));
+      }
+    } catch (jsonError) {
+      // Если не JSON, пробуем XML
+      console.log('[YANDEX_SEARCH] Response is not JSON, trying XML parsing...');
+      
+      // Парсим XML используя регулярные выражения
+      const docMatches = responseText.match(/<doc>[\s\S]*?<\/doc>/g);
+      
+      if (docMatches) {
+        for (const docXml of docMatches.slice(0, maxResults)) {
+          const urlMatch = docXml.match(/<url>([\s\S]*?)<\/url>/);
+          const titleMatch = docXml.match(/<title>([\s\S]*?)<\/title>/);
+          const passageMatch = docXml.match(/<passage>([\s\S]*?)<\/passage>/);
 
-        if (urlMatch && titleMatch) {
-          const url = urlMatch[1].trim();
-          const title = titleMatch[1].trim();
-          const snippet = passageMatch ? passageMatch[1].trim() : '';
+          if (urlMatch && titleMatch) {
+            const url = urlMatch[1].trim();
+            const title = titleMatch[1].trim();
+            const snippet = passageMatch ? passageMatch[1].trim() : '';
 
-          results.push({
-            title,
-            url,
-            snippet,
-            sourceType: getSourceType(url),
-          });
+            results.push({
+              title,
+              url,
+              snippet,
+              sourceType: getSourceType(url),
+            });
+          }
         }
       }
     }

@@ -92,14 +92,17 @@ export async function searchSources(
   const { maxResults = 10 } = options;
 
   // Попытка использовать Яндекс.Поиск API (приоритет для РФ, проверяется первым)
+  // ВАЖНО: Старый XML API больше не работает, нужен Yandex Cloud Search API
   const yandexApiKey = process.env.YANDEX_API_KEY;
+  const yandexFolderId = process.env.YANDEX_FOLDER_ID;
   
   if (yandexApiKey) {
     try {
-      console.log('[SEARCH] Attempting Yandex search...');
+      console.log('[SEARCH] Attempting Yandex Cloud Search API...');
       const { searchWithYandex } = await import('./search-apis/yandex-search');
       const results = await searchWithYandex(query, {
         apiKey: yandexApiKey,
+        folderId: yandexFolderId,
         maxResults,
       });
       console.log('[SEARCH] Yandex search completed successfully');

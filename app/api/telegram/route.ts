@@ -88,9 +88,21 @@ export async function POST(request: NextRequest) {
       // Очистка текста
       const cleanedText = cleanText(textToAnalyze);
       
+      // Определяем, какой поисковый API будет использоваться
+      let searchProvider = 'поисковую систему';
+      if (process.env.YANDEX_API_KEY) {
+        searchProvider = 'Яндекс.Поиск';
+      } else if (process.env.GOOGLE_API_KEY && process.env.GOOGLE_SEARCH_ENGINE_ID) {
+        searchProvider = 'Google Search';
+      } else if (process.env.BING_API_KEY) {
+        searchProvider = 'Bing Search';
+      } else if (process.env.SERPAPI_KEY) {
+        searchProvider = 'SerpAPI';
+      }
+      
       // Отправляем второе сообщение синхронно
       console.log('[WEBHOOK] Sending second message synchronously...');
-      await sendMessage(chatId, '🔎 Ищу возможные источники через Google Search...');
+      await sendMessage(chatId, `🔎 Ищу возможные источники через ${searchProvider}...`);
       console.log('[WEBHOOK] Second message sent');
       
       // Проверяем, настроен ли поисковый API
