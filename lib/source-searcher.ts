@@ -99,18 +99,25 @@ export async function searchSources(
   if (yandexApiKey) {
     try {
       console.log('[SEARCH] Attempting Yandex Cloud Search API...');
+      console.log('[SEARCH] Yandex API key present, length:', yandexApiKey.length);
+      console.log('[SEARCH] Yandex folder ID:', yandexFolderId || 'not set');
+      console.log('[SEARCH] Importing yandex-search module...');
       const { searchWithYandex } = await import('./search-apis/yandex-search');
+      console.log('[SEARCH] Module imported, calling searchWithYandex...');
       const results = await searchWithYandex(query, {
         apiKey: yandexApiKey,
         folderId: yandexFolderId,
         maxResults,
       });
-      console.log('[SEARCH] Yandex search completed successfully');
+      console.log('[SEARCH] Yandex search completed successfully, results:', results.length);
       return results;
     } catch (error: any) {
       console.error('[SEARCH] Yandex Search API error:', error?.message || error);
+      console.error('[SEARCH] Yandex Search API error stack:', error?.stack || 'No stack');
       // Продолжаем попытки с другими API
     }
+  } else {
+    console.log('[SEARCH] Yandex API key not found');
   }
 
   // Попытка использовать Google Custom Search API

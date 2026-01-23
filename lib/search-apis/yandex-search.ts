@@ -35,6 +35,14 @@ export async function searchWithYandex(
   query: string,
   options: YandexSearchOptions
 ): Promise<SearchResult[]> {
+  console.log('[YANDEX_SEARCH] Function called');
+  console.log('[YANDEX_SEARCH] Options:', { 
+    hasApiKey: !!options.apiKey, 
+    apiKeyLength: options.apiKey?.length || 0,
+    hasFolderId: !!options.folderId,
+    folderId: options.folderId,
+    maxResults: options.maxResults 
+  });
   const { apiKey, folderId, maxResults = 10 } = options;
 
   try {
