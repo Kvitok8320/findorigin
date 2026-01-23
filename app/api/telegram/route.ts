@@ -138,9 +138,12 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ ok: true });
     
     // Продолжаем обработку асинхронно (поиск источников и отправка результатов)
+    console.log('[WEBHOOK] Scheduling async processing...');
     setTimeout(() => {
+      console.log('[WEBHOOK] Async processing started, calling processUpdate...');
       processUpdate(update).catch((error) => {
         console.error('[WEBHOOK] Error in async update processing:', error);
+        console.error('[WEBHOOK] Error message:', error instanceof Error ? error.message : String(error));
         console.error('[WEBHOOK] Error stack:', error instanceof Error ? error.stack : 'No stack');
       });
     }, 0);
