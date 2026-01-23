@@ -104,11 +104,22 @@ export async function searchSources(
       console.log('[SEARCH] Importing yandex-search module...');
       const { searchWithYandex } = await import('./search-apis/yandex-search');
       console.log('[SEARCH] Module imported, calling searchWithYandex...');
-      const results = await searchWithYandex(query, {
+      
+      // Добавляем таймаут для Yandex API (25 секунд, чтобы уложиться в лимит Vercel)
+      const searchPromise = searchWithYandex(query, {
         apiKey: yandexApiKey,
         folderId: yandexFolderId,
         maxResults,
       });
+      
+      const timeoutPromise = new Promise<SearchResult[]>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Yandex Search API timeout after 25 seconds'));
+        }, 25000);
+      });
+      
+      console.log('[SEARCH] Starting Yandex search with 25s timeout...');
+      const results = await Promise.race([searchPromise, timeoutPromise]);
       console.log('[SEARCH] Yandex search completed successfully, results:', results.length);
       return results;
     } catch (error: any) {
