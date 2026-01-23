@@ -138,8 +138,9 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ ok: true });
     
     // Продолжаем обработку асинхронно (поиск источников и отправка результатов)
+    // Используем queueMicrotask для более надежной асинхронной обработки на Vercel
     console.log('[WEBHOOK] Scheduling async processing...');
-    setTimeout(() => {
+    queueMicrotask(() => {
       console.log('[WEBHOOK] Async processing started, calling processUpdate...');
       console.log('[WEBHOOK] Update object:', JSON.stringify(update).substring(0, 200));
       try {
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
         console.error('[WEBHOOK] Synchronous error calling processUpdate:', syncError);
         console.error('[WEBHOOK] Sync error message:', syncError instanceof Error ? syncError.message : String(syncError));
       }
-    }, 0);
+    });
     
     console.log('[WEBHOOK] Returning 200 OK, processing will continue asynchronously');
     return response;
