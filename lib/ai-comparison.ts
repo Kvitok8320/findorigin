@@ -58,25 +58,45 @@ export async function compareWithAI(
     }
     
     console.log('[AI] Sending request to', useOpenRouter ? 'OpenRouter' : 'OpenAI', '...');
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert fact-checker. Compare the original text with search results and evaluate their relevance. Return JSON format only.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    
+    // Добавляем таймаут для fetch запроса (20 секунд для OpenRouter, 15 для OpenAI)
+    const fetchTimeout = useOpenRouter ? 20000 : 15000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('[AI] Fetch timeout after', fetchTimeout, 'ms');
+      controller.abort();
+    }, fetchTimeout);
+    
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert fact-checker. Compare the original text with search results and evaluate their relevance. Return JSON format only.',
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error(`${useOpenRouter ? 'OpenRouter' : 'OpenAI'} API request timeout after ${fetchTimeout}ms`);
+      }
+      throw fetchError;
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));

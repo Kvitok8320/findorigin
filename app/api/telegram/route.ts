@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
     const processingPromise = processUpdate(update);
     const timeoutPromise = new Promise<void>((_, reject) => {
       setTimeout(() => {
-        reject(new Error('Processing timeout after 25 seconds'));
-      }, 25000);
+        reject(new Error('Processing timeout after 28 seconds'));
+      }, 28000); // Увеличено до 28 секунд (maxDuration = 30)
     });
     
     try {
