@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface TelegramWebApp {
   initData: string;
@@ -92,45 +92,15 @@ export default function MiniAppPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      setWebApp(tg);
-
-      // Настраиваем кнопку отправки
-      tg.MainButton.setText('🔍 Найти источники');
-      tg.MainButton.onClick(handleAnalyze);
-      tg.MainButton.show();
-
-      // Настраиваем кнопку назад
-      tg.BackButton.onClick(() => {
-        tg.close();
-      });
-      tg.BackButton.show();
-
-      return () => {
-        tg.MainButton.offClick(handleAnalyze);
-        tg.BackButton.offClick(() => {});
-      };
+  const handleAnalyze = useCallback(async () => {
+    console.log('[TMA] handleAnalyze called, text length:', text.trim().length, 'isLoading:', isLoading);
+    
+    if (!text.trim() || isLoading) {
+      console.log('[TMA] Skipping - no text or already loading');
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    if (webApp) {
-      // Обновляем состояние кнопки в зависимости от наличия текста
-      if (text.trim().length > 0) {
-        webApp.MainButton.enable();
-      } else {
-        webApp.MainButton.disable();
-      }
-    }
-  }, [text, webApp]);
-
-  const handleAnalyze = async () => {
-    if (!text.trim() || isLoading) return;
-
+    console.log('[TMA] Starting analysis...');
     setIsLoading(true);
     setError(null);
     setResults([]);
@@ -141,6 +111,7 @@ export default function MiniAppPage() {
     }
 
     try {
+      console.log('[TMA] Sending request to /api/mini-app/analyze');
       const response = await fetch('/api/mini-app/analyze', {
         method: 'POST',
         headers: {
@@ -152,12 +123,16 @@ export default function MiniAppPage() {
         }),
       });
 
+      console.log('[TMA] Response status:', response.status, 'ok:', response.ok);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[TMA] Error response:', errorData);
         throw new Error(errorData.error || 'Failed to analyze text');
       }
 
       const data = await response.json();
+      console.log('[TMA] Received data:', data);
       
       if (data.results && data.results.length > 0) {
         setResults(data.results);
@@ -171,6 +146,7 @@ export default function MiniAppPage() {
         }
       }
     } catch (err: any) {
+      console.error('[TMA] Error:', err);
       setError(err.message || 'Произошла ошибка при поиске источников');
       if (webApp) {
         webApp.HapticFeedback.notificationOccurred('error');
@@ -181,7 +157,50 @@ export default function MiniAppPage() {
         webApp.MainButton.hideProgress();
       }
     }
-  };
+  }, [text, isLoading, webApp]);
+
+  useEffect(() => {
+    console.log('[TMA] useEffect - checking for Telegram WebApp');
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      console.log('[TMA] Telegram WebApp found, initializing...');
+      tg.ready();
+      tg.expand();
+      setWebApp(tg);
+
+      // Настраиваем кнопку отправки
+      tg.MainButton.setText('🔍 Найти источники');
+      tg.MainButton.onClick(() => {
+        console.log('[TMA] MainButton clicked');
+        handleAnalyze();
+      });
+      tg.MainButton.show();
+
+      // Настраиваем кнопку назад
+      tg.BackButton.onClick(() => {
+        tg.close();
+      });
+      tg.BackButton.show();
+
+      return () => {
+        tg.MainButton.offClick(() => {});
+        tg.BackButton.offClick(() => {});
+      };
+    } else {
+      console.warn('[TMA] Telegram WebApp not found - running outside Telegram?');
+    }
+  }, [handleAnalyze]);
+
+  useEffect(() => {
+    if (webApp) {
+      // Обновляем состояние кнопки в зависимости от наличия текста
+      if (text.trim().length > 0) {
+        webApp.MainButton.enable();
+      } else {
+        webApp.MainButton.disable();
+      }
+    }
+  }, [text, webApp]);
 
   const getTypeEmoji = (type: string) => {
     const emojis: Record<string, string> = {
