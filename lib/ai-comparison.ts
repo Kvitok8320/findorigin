@@ -20,6 +20,7 @@ export async function compareWithAI(
   sources: SearchResult[]
 ): Promise<ComparisonResult[]> {
   const apiKey = process.env.OPENAI_API_KEY;
+  const useOpenRouter = process.env.USE_OPENROUTER === 'true';
 
   if (!apiKey) {
     console.error('[AI] OPENAI_API_KEY is not set');
@@ -36,13 +37,26 @@ export async function compareWithAI(
     // Формируем промпт для сравнения
     const prompt = buildComparisonPrompt(originalText, sources);
     
-    console.log('[AI] Sending request to OpenAI...');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Определяем endpoint и заголовки в зависимости от провайдера
+    const endpoint = useOpenRouter 
+      ? 'https://openrouter.ai/api/v1/chat/completions'
+      : 'https://api.openai.com/v1/chat/completions';
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    };
+    
+    // OpenRouter требует дополнительные заголовки (опционально)
+    if (useOpenRouter) {
+      headers['HTTP-Referer'] = process.env.OPENROUTER_REFERER || 'https://findorigin.vercel.app';
+      headers['X-Title'] = process.env.OPENROUTER_TITLE || 'FindOrigin Bot';
+    }
+    
+    console.log('[AI] Sending request to', useOpenRouter ? 'OpenRouter' : 'OpenAI', '...');
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
@@ -62,12 +76,12 @@ export async function compareWithAI(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('[AI] OpenAI API error:', error);
-      throw new Error(`OpenAI API error: ${JSON.stringify(error)}`);
+      console.error('[AI]', useOpenRouter ? 'OpenRouter' : 'OpenAI', 'API error:', error);
+      throw new Error(`${useOpenRouter ? 'OpenRouter' : 'OpenAI'} API error: ${JSON.stringify(error)}`);
     }
 
     const data = await response.json();
-    console.log('[AI] Received response from OpenAI');
+    console.log('[AI] Received response from', useOpenRouter ? 'OpenRouter' : 'OpenAI');
     
     const content = data.choices[0]?.message?.content;
     if (!content) {
