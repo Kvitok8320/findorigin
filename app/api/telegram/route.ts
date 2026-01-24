@@ -330,14 +330,28 @@ async function processUpdate(update: TelegramUpdate) {
         low: '❓',
       }[result.confidence as 'high' | 'medium' | 'low'] || '⚠️';
 
-      responseText += `${index + 1}. ${typeEmoji} ${result.source.title}\n`;
-      responseText += `   ${result.source.url}\n`;
+      // Экранируем HTML символы, но сохраняем теги форматирования (<b>, </b>)
+      const escapeHtml = (text: string) => {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/&lt;b&gt;/g, '<b>')
+          .replace(/&lt;\/b&gt;/g, '</b>');
+      };
+      
+      const title = escapeHtml(result.source.title);
+      const explanation = result.explanation ? escapeHtml(result.explanation.substring(0, 80)) : '';
+      const snippet = result.source.snippet ? escapeHtml(result.source.snippet.substring(0, 100)) : '';
+      
+      responseText += `${index + 1}. ${typeEmoji} ${title}\n`;
+      responseText += `   <a href="${result.source.url}">${result.source.url}</a>\n`;
       responseText += `   ${confidenceEmoji} Релевантность: ${result.relevanceScore}% (${result.confidence})\n`;
-      if (result.explanation) {
-        responseText += `   ${result.explanation.substring(0, 80)}...\n`;
+      if (explanation) {
+        responseText += `   ${explanation}...\n`;
       }
-      if (result.source.snippet) {
-        responseText += `   ${result.source.snippet.substring(0, 100)}...\n`;
+      if (snippet) {
+        responseText += `   ${snippet}...\n`;
       }
       responseText += '\n';
     });
@@ -349,11 +363,12 @@ async function processUpdate(update: TelegramUpdate) {
       console.log('[PROCESS] Response too long, splitting into parts');
       const parts = responseText.match(new RegExp(`.{1,${maxLength - 100}}`, 'g')) || [];
       for (const part of parts) {
-        await sendMessage(chatId, part);
+        await sendMessage(chatId, part, { parse_mode: 'HTML' });
       }
     } else {
       console.log('[PROCESS] Sending response message...');
-      await sendMessage(chatId, responseText);
+      // Используем HTML parse_mode для поддержки форматирования
+      await sendMessage(chatId, responseText, { parse_mode: 'HTML' });
     }
     console.log('[PROCESS] Response sent successfully, processing complete');
 

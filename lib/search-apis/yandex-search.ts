@@ -355,8 +355,11 @@ function parseYandexSearchResults(rawData: string, maxResults: number): SearchRe
 
       if (urlMatch && titleMatch) {
         const url = urlMatch[1].trim();
-        const title = titleMatch[1].trim();
-        const snippet = passageMatch ? passageMatch[1].trim() : '';
+        // Заменяем <hlword> на <b> для Telegram HTML форматирования
+        let title = titleMatch[1].trim().replace(/<hlword>/g, '<b>').replace(/<\/hlword>/g, '</b>');
+        let snippet = passageMatch ? passageMatch[1].trim() : '';
+        // Также заменяем в сниппете
+        snippet = snippet.replace(/<hlword>/g, '<b>').replace(/<\/hlword>/g, '</b>');
 
         results.push({
           title,
