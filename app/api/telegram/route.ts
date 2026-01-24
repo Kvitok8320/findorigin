@@ -333,12 +333,12 @@ async function processUpdate(update: TelegramUpdate) {
       // Экранируем HTML символы, но сохраняем теги форматирования (<b>, </b>)
       const escapeHtml = (text: string) => {
         // Сначала защищаем теги <b> и </b>, заменяя их на временные маркеры
-        const protected = text
+        const protectedText = text
           .replace(/<b>/g, '___BOLD_OPEN___')
           .replace(/<\/b>/g, '___BOLD_CLOSE___');
         
         // Экранируем все HTML символы
-        const escaped = protected
+        const escaped = protectedText
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
