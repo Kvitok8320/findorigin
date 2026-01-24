@@ -20,7 +20,11 @@ export async function compareWithAI(
   sources: SearchResult[]
 ): Promise<ComparisonResult[]> {
   const apiKey = process.env.OPENAI_API_KEY;
-  const useOpenRouter = process.env.USE_OPENROUTER === 'true';
+  // Более гибкая проверка: поддерживаем 'true', 'True', 'TRUE', '1'
+  const useOpenRouter = process.env.USE_OPENROUTER?.toLowerCase() === 'true' || process.env.USE_OPENROUTER === '1';
+
+  console.log('[AI] USE_OPENROUTER env var:', process.env.USE_OPENROUTER);
+  console.log('[AI] useOpenRouter flag:', useOpenRouter);
 
   if (!apiKey) {
     console.error('[AI] OPENAI_API_KEY is not set');
