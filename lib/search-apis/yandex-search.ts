@@ -355,11 +355,27 @@ function parseYandexSearchResults(rawData: string, maxResults: number): SearchRe
 
       if (urlMatch && titleMatch) {
         const url = urlMatch[1].trim();
-        // Заменяем <hlword> на <b> для Telegram HTML форматирования
-        let title = titleMatch[1].trim().replace(/<hlword>/g, '<b>').replace(/<\/hlword>/g, '</b>');
-        let snippet = passageMatch ? passageMatch[1].trim() : '';
-        // Также заменяем в сниппете
-        snippet = snippet.replace(/<hlword>/g, '<b>').replace(/<\/hlword>/g, '</b>');
+        
+        // Функция для безопасной замены hlword на b теги
+        const replaceHlword = (text: string): string => {
+          // Сначала считаем количество открывающих и закрывающих тегов
+          const openCount = (text.match(/<hlword>/g) || []).length;
+          const closeCount = (text.match(/<\/hlword>/g) || []).length;
+          
+          // Заменяем теги
+          let result = text.replace(/<hlword>/g, '<b>').replace(/<\/hlword>/g, '</b>');
+          
+          // Если теги непарные, удаляем все теги <b> и </b>
+          if (openCount !== closeCount) {
+            console.warn('[YANDEX_SEARCH] Unmatched hlword tags detected, removing all bold tags');
+            result = result.replace(/<b>/g, '').replace(/<\/b>/g, '');
+          }
+          
+          return result;
+        };
+        
+        let title = replaceHlword(titleMatch[1].trim());
+        let snippet = passageMatch ? replaceHlword(passageMatch[1].trim()) : '';
 
         results.push({
           title,

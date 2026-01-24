@@ -332,17 +332,44 @@ async function processUpdate(update: TelegramUpdate) {
 
       // Экранируем HTML символы, но сохраняем теги форматирования (<b>, </b>)
       const escapeHtml = (text: string) => {
-        return text
+        // Сначала защищаем теги <b> и </b>, заменяя их на временные маркеры
+        const protected = text
+          .replace(/<b>/g, '___BOLD_OPEN___')
+          .replace(/<\/b>/g, '___BOLD_CLOSE___');
+        
+        // Экранируем все HTML символы
+        const escaped = protected
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/&lt;b&gt;/g, '<b>')
-          .replace(/&lt;\/b&gt;/g, '</b>');
+          .replace(/>/g, '&gt;');
+        
+        // Восстанавливаем теги <b> и </b>
+        return escaped
+          .replace(/___BOLD_OPEN___/g, '<b>')
+          .replace(/___BOLD_CLOSE___/g, '</b>');
       };
       
-      const title = escapeHtml(result.source.title);
-      const explanation = result.explanation ? escapeHtml(result.explanation.substring(0, 80)) : '';
-      const snippet = result.source.snippet ? escapeHtml(result.source.snippet.substring(0, 100)) : '';
+      // Проверяем, что все теги <b> правильно закрыты
+      const validateHtmlTags = (text: string): string => {
+        const openTags = (text.match(/<b>/g) || []).length;
+        const closeTags = (text.match(/<\/b>/g) || []).length;
+        
+        if (openTags !== closeTags) {
+          console.warn('[PROCESS] Unmatched <b> tags detected, removing all bold tags');
+          return text.replace(/<b>/g, '').replace(/<\/b>/g, '');
+        }
+        
+        return text;
+      };
+      
+      let title = escapeHtml(result.source.title);
+      let explanation = result.explanation ? escapeHtml(result.explanation.substring(0, 80)) : '';
+      let snippet = result.source.snippet ? escapeHtml(result.source.snippet.substring(0, 100)) : '';
+      
+      // Проверяем и исправляем непарные теги
+      title = validateHtmlTags(title);
+      explanation = validateHtmlTags(explanation);
+      snippet = validateHtmlTags(snippet);
       
       responseText += `${index + 1}. ${typeEmoji} ${title}\n`;
       responseText += `   <a href="${result.source.url}">${result.source.url}</a>\n`;
